@@ -85,6 +85,17 @@
           }
         ]
       }
+    ],
+    "ConfigChange": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DOTFILES_DIR=$(cat ~/.claude/.dotfiles-claude-dir 2>/dev/null); [ -n \"$DOTFILES_DIR\" ] && cp ~/.claude/settings.json \"$DOTFILES_DIR/settings.json\""
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

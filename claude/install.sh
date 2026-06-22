@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 #
-# install.sh — symlink this portable Claude Code config into ~/.claude
+# install.sh — set up this portable Claude Code config in ~/.claude
 #
 # Idempotent. Run it as many times as you like. It:
-#   - symlinks claude/settings.json        -> ~/.claude/settings.json
+#   - copies claude/settings.json          -> ~/.claude/settings.json
+#     (copy, not symlink — /config does atomic writes that break symlinks)
+#   - writes dotfiles path                 -> ~/.claude/.dotfiles-claude-dir
+#     (used by the ConfigChange hook to sync /config edits back to the repo)
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
 #
 # Skills are linked individually (not the whole skills/ dir) so any other
 # skills you already have in ~/.claude/skills are left untouched.
 #
-# Existing real files/dirs at a target are backed up to <target>.bak-<ts>
-# before being replaced. Existing correct symlinks are left as-is.
+# settings.json copy behaviour:
+#   - symlink at target  → convert to real file (copy from dotfiles)
+#   - missing            → copy from dotfiles
+#   - real file present  → leave it alone (may have /config edits); update pointer
 #
 # Usage:
 #   ./install.sh            # install
@@ -70,7 +75,22 @@ echo
 run mkdir -p "${CLAUDE_HOME}/skills"
 
 echo "settings.json:"
-link "${SCRIPT_DIR}/settings.json" "${CLAUDE_HOME}/settings.json"
+settings_src="${SCRIPT_DIR}/settings.json"
+settings_dst="${CLAUDE_HOME}/settings.json"
+if [ -L "$settings_dst" ]; then
+  c_yellow "  converting symlink to real file: ${settings_dst/#$HOME/~}"
+  run cp "$settings_src" "${settings_dst}.new"
+  run mv "${settings_dst}.new" "$settings_dst"
+  c_green "  copied: ${settings_dst/#$HOME/~}"
+elif [ ! -e "$settings_dst" ]; then
+  c_yellow "  copying: ${settings_dst/#$HOME/~}"
+  run cp "$settings_src" "$settings_dst"
+  c_green "  copied: ${settings_dst/#$HOME/~}"
+else
+  echo "  ok (real file present, not overwriting): ${settings_dst/#$HOME/~}"
+fi
+run sh -c "echo \"${SCRIPT_DIR}\" > \"${CLAUDE_HOME}/.dotfiles-claude-dir\""
+c_green "  stored dotfiles path -> ${CLAUDE_HOME/#$HOME/~}/.dotfiles-claude-dir"
 echo
 
 echo "skills:"
