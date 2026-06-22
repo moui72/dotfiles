@@ -1,0 +1,30 @@
+# --- Secrets: never commit real credential files ---
+# Skills load secrets from .env.skill (gitignored); .env.skill.example is the template.
+.env.skill
+**/.env.skill
+*.env.local
+.env
+
+# --- Python caches ---
+__pycache__/
+*.py[cod]
+*.pyc
+
+# --- Per-project / personal overrides (Claude convention: .local is personal) ---
+settings.local.json
+**/settings.local.json
+
+# --- Skill runtime artifacts ---
+.setup-complete
+**/.setup-complete
+**/scripts/.bat-skip
+# assisted-review: personal bot allowlist + saved review state
+**/user-bots.txt
+review-*.json
+
+# --- OS / editor cruft ---
+.DS_Store
+*.swp
+
+# --- install.sh backups ---
+*.bak-*

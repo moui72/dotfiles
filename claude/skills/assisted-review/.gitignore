@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+.setup-complete
+scripts/.bat-skip
+user-bots.txt

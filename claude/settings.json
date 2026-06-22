@@ -1,0 +1,106 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/eslint:*)",
+      "Bash(~/.claude/skills/assisted-review/scripts/start.sh:*)",
+      "Bash(~/.claude/skills/assisted-review/scripts/act.sh:*)",
+      "Bash(~/.claude/skills/assisted-review/scripts/submit-review.sh:*)",
+      "Bash(~/.claude/skills/assisted-review/scripts/bat-check.sh:*)",
+      "Bash(~/.claude/skills/assisted-review/scripts/stale-check.sh:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(jq:*)",
+      "Bash(bat:*)",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(egrep:*)",
+      "Bash(fgrep:*)",
+      "Bash(find:*)",
+      "Bash(fd:*)",
+      "Bash(cd:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(stat:*)",
+      "Bash(file:*)",
+      "Bash(du:*)",
+      "Bash(which:*)",
+      "Bash(diff:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git blame:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git describe:*)",
+      "Bash(git stash list:*)",
+      "Bash(git config --get:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)"
+    ]
+  },
+  "hooks": {
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\"; terminal-notifier -title 'Claude Code' -message 'Permission requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "Elicitation": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\"; terminal-notifier -title 'Claude Code' -message 'Input requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;✅ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\""
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
+  },
+  "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
+  "advisorModel": "opus",
+  "skipWorkflowUsageWarning": true,
+  "editorMode": "normal",
+  "preferredNotifChannel": "ghostty",
+  "remoteControlAtStartup": false,
+  "inputNeededNotifEnabled": true
+}

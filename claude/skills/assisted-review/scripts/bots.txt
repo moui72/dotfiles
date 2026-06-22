@@ -1,0 +1,8 @@
+# Known bot/automation logins. One per line. Comments start with #.
+dependabot
+renovate
+github-actions
+coderabbitai
+copilot-pull-request-reviewer
+sonarqubecloud
+codecov
