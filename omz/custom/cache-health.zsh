@@ -1,0 +1,1 @@
+alias cache-health='jq -r '"'"'.session_id[0:8] as $id | "[\($id)] hit_rate=\(.cache.hit_rate)%  read=\(.cache.cache_read)  create=\(.cache.cache_creation)  ttl=\(.cache.ttl_tier)  reqs=\(.request_count)  desync=\(.thinking_desync_risk)"'"'"' ~/.claude/quota-status/sessions/*.json'

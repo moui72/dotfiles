@@ -8,9 +8,10 @@
 #   - writes dotfiles path                 -> ~/.claude/.dotfiles-claude-dir
 #     (used by the ConfigChange hook to sync /config edits back to the repo)
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
+#   - symlinks omz/custom/<each-file>.zsh  -> ~/.oh-my-zsh/custom/<each-file>.zsh
 #
-# Skills are linked individually (not the whole skills/ dir) so any other
-# skills you already have in ~/.claude/skills are left untouched.
+# Skills and omz files are linked individually so any other files you already
+# have in those dirs are left untouched.
 #
 # settings.json copy behaviour:
 #   - symlink at target  → convert to real file (copy from dotfiles)
@@ -28,6 +29,7 @@ DRY_RUN=0
 
 # Resolve the repo's claude/ dir from this script's location (portable, no realpath dep).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CLAUDE_HOME="${HOME}/.claude"
 TS="$(date +%Y%m%d-%H%M%S)"
 
@@ -99,6 +101,19 @@ for skill_dir in "${SCRIPT_DIR}"/skills/*/; do
   name="$(basename "$skill_dir")"
   link "${skill_dir%/}" "${CLAUDE_HOME}/skills/${name}"
 done
+echo
+
+echo "oh-my-zsh custom files:"
+omz_custom="${HOME}/.oh-my-zsh/custom"
+if [ ! -d "$omz_custom" ]; then
+  c_yellow "  skip: ~/.oh-my-zsh/custom not found (oh-my-zsh not installed?)"
+else
+  for omz_file in "${REPO_ROOT}"/omz/custom/*.zsh; do
+    [ -f "$omz_file" ] || continue
+    name="$(basename "$omz_file")"
+    link "$omz_file" "${omz_custom}/${name}"
+  done
+fi
 echo
 
 # ---- prerequisite check (warn-only; never fails the install) ----
