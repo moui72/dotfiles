@@ -50,7 +50,8 @@
       "Bash(gh repo view:*)",
       "Bash(gh issue view:*)",
       "Bash(gh issue list:*)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "hooks": {
     "PermissionRequest": [
@@ -100,15 +101,16 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "npx -y ccstatusline@latest",
+    "command": "ccburn collect | npx -y ccstatusline@latest",
     "padding": 0
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
+  "effortLevel": "medium",
   "advisorModel": "opus",
+  "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
   "editorMode": "normal",
   "preferredNotifChannel": "ghostty",

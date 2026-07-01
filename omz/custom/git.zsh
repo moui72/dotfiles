@@ -22,6 +22,19 @@ function git_co_master_path() {
   git checkout master -- $1
 }
 
+function git_ignore() {
+  local root=$(git rev-parse --show-toplevel) || return 1
+  local gitignore="$root/.gitignore"
+  for pattern in "$@"; do
+    if grep -qxF "$pattern" "$gitignore" 2>/dev/null; then
+      echo "Already in .gitignore: $pattern"
+    else
+      echo "$pattern" >> "$gitignore"
+      echo "Added to .gitignore: $pattern"
+    fi
+  done
+}
+
 alias gdb="git_default_branch_name"
 alias gcam="git commit -am"
 alias gcm="git commit -m"
@@ -46,3 +59,4 @@ alias grsm="git_reset_default_branch"
 alias update="gud"
 alias git_set_head="git remote set-head origin -a"
 alias grp="git_co_master_path"
+alias gig="git_ignore"
