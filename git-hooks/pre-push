@@ -1,0 +1,51 @@
+#!/bin/zsh
+# Global pre-push hook (wired via `git config --global core.hooksPath`).
+# Blocks pushes that contain unsigned (or invalidly-signed) commits — the
+# case this guards against is committing with --no-gpg-sign while 1Password
+# is locked during a remote/phone session, then forgetting to resign before
+# pushing from a real computer.
+#
+# core.hooksPath replaces a repo's local .git/hooks entirely rather than
+# running alongside it, so if this repo has its own pre-push script sitting
+# directly in .git/hooks/pre-push, run it too rather than silently dropping it.
+
+zero_oid="0000000000000000000000000000000000000000"
+remote_name="$1"
+found_unsigned=0
+
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"
+local_hook="$repo_root/.git/hooks/pre-push"
+
+while read -r local_ref local_oid remote_ref remote_oid; do
+  [[ "$local_oid" == "$zero_oid" ]] && continue  # deleting a ref, nothing to check
+
+  if [[ "$remote_oid" == "$zero_oid" ]]; then
+    range_commits=$(git rev-list "$local_oid" --not --remotes="$remote_name" 2>/dev/null)
+  else
+    range_commits=$(git rev-list "$remote_oid..$local_oid" 2>/dev/null)
+  fi
+
+  [[ -z "$range_commits" ]] && continue
+
+  commits=(${(f)range_commits})
+  bad=$(git log --no-walk --format='%h %G? %s' "${commits[@]}" | awk '$2 != "G"')
+  if [[ -n "$bad" ]]; then
+    found_unsigned=1
+    echo "pre-push: unsigned/invalid-signature commits on $local_ref:" >&2
+    echo "$bad" >&2
+  fi
+done
+
+if [[ "$found_unsigned" -eq 1 ]]; then
+  echo >&2
+  echo "Blocked push: sign these before pushing. From the repo, run:" >&2
+  echo "  resign-unsigned-commits" >&2
+  echo "(defined in dotfiles/omz/custom/git-signing.zsh — requires 1Password unlocked)" >&2
+  exit 1
+fi
+
+if [[ -x "$local_hook" && "$local_hook" != "$0" ]]; then
+  exec "$local_hook" "$@"
+fi
+
+exit 0
