@@ -1,0 +1,158 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "16",
+        "type": "custom-symbol",
+        "customSymbol": "✨",
+        "color": "hex:3C3836",
+        "backgroundColor": "hex:D65D0E",
+        "merge": true,
+        "bold": true
+      },
+      {
+        "id": "1",
+        "type": "model",
+        "color": "hex:3C3836",
+        "backgroundColor": "hex:D65D0E",
+        "bold": true,
+        "rawValue": true
+      },
+      {
+        "id": "2",
+        "type": "separator"
+      },
+      {
+        "id": "17",
+        "type": "custom-symbol",
+        "customSymbol": "📐",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:665C54",
+        "merge": true
+      },
+      {
+        "id": "3",
+        "type": "context-length",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:665C54",
+        "rawValue": true
+      },
+      {
+        "id": "8",
+        "type": "separator"
+      },
+      {
+        "id": "18",
+        "type": "custom-symbol",
+        "customSymbol": "⚡",
+        "color": "hex:282828",
+        "backgroundColor": "hex:689D6A",
+        "merge": true
+      },
+      {
+        "id": "9",
+        "type": "total-speed",
+        "color": "hex:282828",
+        "backgroundColor": "hex:689D6A",
+        "rawValue": true
+      },
+      {
+        "id": "14",
+        "type": "separator"
+      },
+      {
+        "id": "19",
+        "type": "custom-symbol",
+        "customSymbol": "🔥",
+        "color": "hex:282828",
+        "backgroundColor": "hex:98971A",
+        "merge": true
+      },
+      {
+        "id": "15",
+        "type": "tokens-total",
+        "color": "hex:282828",
+        "backgroundColor": "hex:98971A",
+        "rawValue": true
+      },
+      {
+        "id": "10",
+        "type": "separator"
+      },
+      {
+        "id": "20",
+        "type": "custom-symbol",
+        "customSymbol": "📊",
+        "color": "hex:282828",
+        "backgroundColor": "hex:D79921",
+        "merge": true
+      },
+      {
+        "id": "11",
+        "type": "session-usage",
+        "color": "hex:282828",
+        "backgroundColor": "hex:D79921",
+        "rawValue": true
+      },
+      {
+        "id": "4",
+        "type": "separator"
+      },
+      {
+        "id": "12",
+        "type": "git-origin-repo",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:458588",
+        "rawValue": true
+      },
+      {
+        "id": "13",
+        "type": "separator"
+      },
+      {
+        "id": "5",
+        "type": "git-branch",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:B16286"
+      },
+      {
+        "id": "6",
+        "type": "separator"
+      },
+      {
+        "id": "7",
+        "type": "git-changes",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:CC241D"
+      }
+    ],
+    [],
+    []
+  ],
+  "flexMode": "full-minus-40",
+  "compactThreshold": 60,
+  "colorLevel": 3,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "gitCacheTtlSeconds": 5,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": true,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [
+      ""
+    ],
+    "endCaps": [
+      ""
+    ],
+    "autoAlign": false,
+    "continueThemeAcrossLines": false,
+    "theme": "custom"
+  }
+}

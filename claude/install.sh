@@ -8,10 +8,16 @@
 #   - writes dotfiles path                 -> ~/.claude/.dotfiles-claude-dir
 #     (used by the ConfigChange hook to sync /config edits back to the repo)
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
-#   - symlinks omz/custom/<each-file>.zsh  -> ~/.oh-my-zsh/custom/<each-file>.zsh
+#   - symlinks omz/custom                  -> ~/.oh-my-zsh/custom
+#   - symlinks ccstatusline/settings.json  -> ~/.config/ccstatusline/settings.json
 #
-# Skills and omz files are linked individually so any other files you already
-# have in those dirs are left untouched.
+# Skills are linked individually so any other files you already have in
+# ~/.claude/skills are left untouched. omz/custom is linked as a whole
+# directory, not per-file — oh-my-zsh only globs top-level *.zsh files
+# directly in $ZSH_CUSTOM (confirmed against oh-my-zsh.sh), so anything
+# machine-local that needs sourcing (e.g. a vault, stock example files)
+# has to live inside omz/custom itself, not alongside it. Per-file symlinks
+# were tried first and abandoned for this reason.
 #
 # settings.json copy behaviour:
 #   - symlink at target  → convert to real file (copy from dotfiles)
@@ -103,17 +109,18 @@ for skill_dir in "${SCRIPT_DIR}"/skills/*/; do
 done
 echo
 
-echo "oh-my-zsh custom files:"
-omz_custom="${HOME}/.oh-my-zsh/custom"
-if [ ! -d "$omz_custom" ]; then
-  c_yellow "  skip: ~/.oh-my-zsh/custom not found (oh-my-zsh not installed?)"
+echo "oh-my-zsh custom dir:"
+omz_home="${HOME}/.oh-my-zsh"
+if [ ! -d "$omz_home" ]; then
+  c_yellow "  skip: ~/.oh-my-zsh not found (oh-my-zsh not installed?)"
 else
-  for omz_file in "${REPO_ROOT}"/omz/custom/*.zsh; do
-    [ -f "$omz_file" ] || continue
-    name="$(basename "$omz_file")"
-    link "$omz_file" "${omz_custom}/${name}"
-  done
+  link "${REPO_ROOT}/omz/custom" "${omz_home}/custom"
 fi
+echo
+
+echo "ccstatusline config:"
+run mkdir -p "${HOME}/.config/ccstatusline"
+link "${REPO_ROOT}/ccstatusline/settings.json" "${HOME}/.config/ccstatusline/settings.json"
 echo
 
 # ---- prerequisite check (warn-only; never fails the install) ----
