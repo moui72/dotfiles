@@ -1,5 +1,5 @@
 # The next line updates PATH for the Google Cloud SDK.
-_gcloud_sdk="${CLOUDSDK_ROOT_DIR:-$HOME/Downloads/google-cloud-sdk}"
+_gcloud_sdk="${CLOUDSDK_ROOT_DIR:-$HOME/google-cloud-sdk}"
 if [ -f "$_gcloud_sdk/path.zsh.inc" ]; then . "$_gcloud_sdk/path.zsh.inc"; fi
 
 # The next line enables shell command completion for gcloud.

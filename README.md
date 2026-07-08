@@ -85,6 +85,31 @@ Set them up per machine as needed:
   org URLs, credentials, and shell helpers that don't belong in a portable personal
   bundle. Keep those in `~/.claude/skills` directly on the machines that need them.
 
+## Machine-specific things that ARE in this repo (degrade gracefully elsewhere)
+
+Unlike the section above, these files *are* checked in — they're just tuned to
+the source machine's setup. They no-op or fall back harmlessly if that setup
+isn't present, so it wasn't worth excluding them, but don't expect them to be
+useful as-is on a different setup:
+
+- **Ghostty-specific notification hooks.** `claude/settings.json` sets
+  `"preferredNotifChannel": "ghostty"` and the `PermissionRequest`/`Elicitation`
+  hooks call `terminal-notifier -activate com.mitchellh.ghostty`. Silent no-op
+  in any other terminal.
+- **1Password-based commit signing.** `git-hooks/pre-push` and
+  `omz/custom/git-signing.zsh` assume SSH commit signing via 1Password. If you
+  don't sign commits this way, the hook's unsigned-commit check will just never
+  find anything to block.
+- **`omz/custom/op.zsh`** wraps the 1Password CLI (`op`); errors harmlessly if
+  `op` isn't installed.
+- **`omz/custom/gcloud.zsh`** defaults `CLOUDSDK_ROOT_DIR` to
+  `~/google-cloud-sdk` (a manual, non-Homebrew install). Override
+  `CLOUDSDK_ROOT_DIR` or edit the path if your install lives elsewhere (e.g. a
+  Homebrew cask under `/opt/homebrew/Caskroom/...`).
+- **nvm** is configured via oh-my-zsh's built-in `nvm` plugin (lazy-loaded, see
+  the zstyle config in `~/.zshrc`), not a file in `omz/custom/` — there's
+  nothing to symlink for it.
+
 ## Secrets
 
 No credentials live in this repo. `.gitignore` blocks `**/.env.skill`, `.env`,
