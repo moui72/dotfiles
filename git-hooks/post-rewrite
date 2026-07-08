@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# post-rewrite — install.sh sets pull.rebase=false for this repo so `git pull`
+# always merges and post-merge covers it. This hook is just a fallback for a
+# manual `git rebase` (or `git pull --rebase`, which overrides the local
+# config): re-run install.sh after a rebase so config stays in sync either way.
+#
+# Wired via `core.hooksPath` (see install.sh, repo-local). Guards itself to
+# only act when the repo that triggered the hook IS this dotfiles repo, and
+# only for the "rebase" operation (not "amend", which isn't a pull).
+
+set -euo pipefail
+
+[ "${1:-}" = "rebase" ] || exit 0
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$HOOK_DIR")"
+
+current_toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ "$current_toplevel" = "$REPO_ROOT" ]; then
+  "${REPO_ROOT}/claude/install.sh"
+fi
+
+# core.hooksPath replaces a repo's local .git/hooks entirely, so chain to any
+# repo-local post-rewrite rather than silently dropping it (matches pre-push).
+local_hook="${current_toplevel}/.git/hooks/post-rewrite"
+if [ -n "$current_toplevel" ] && [ -x "$local_hook" ] && [ "$local_hook" != "${BASH_SOURCE[0]}" ]; then
+  exec "$local_hook" "$@"
+fi

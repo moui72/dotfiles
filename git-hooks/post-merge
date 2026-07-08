@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# post-merge — after a merge-style `git pull` in this dotfiles repo, re-run
+# install.sh so new symlinked config (skills, omz custom, ccstatusline, etc.)
+# takes effect immediately instead of waiting on a manual re-run.
+#
+# Wired via `core.hooksPath` (see install.sh, repo-local). Guards itself to
+# only act when the repo that triggered the hook IS this dotfiles repo, so
+# it stays safe even if core.hooksPath is ever pointed at this dir globally.
+#
+# Fires on fast-forward merges too (confirmed empirically), so install.sh
+# also sets pull.rebase=false for this repo — that guarantees `git pull`
+# always merges (never rebases) and this hook always runs.
+
+set -euo pipefail
+
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(dirname "$HOOK_DIR")"
+
+current_toplevel="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ "$current_toplevel" = "$REPO_ROOT" ]; then
+  "${REPO_ROOT}/claude/install.sh"
+fi
+
+# core.hooksPath replaces a repo's local .git/hooks entirely, so chain to any
+# repo-local post-merge rather than silently dropping it (matches pre-push).
+local_hook="${current_toplevel}/.git/hooks/post-merge"
+if [ -n "$current_toplevel" ] && [ -x "$local_hook" ] && [ "$local_hook" != "${BASH_SOURCE[0]}" ]; then
+  exec "$local_hook" "$@"
+fi

@@ -10,6 +10,13 @@
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
 #   - symlinks omz/custom                  -> ~/.oh-my-zsh/custom
 #   - symlinks ccstatusline/settings.json  -> ~/.config/ccstatusline/settings.json
+#   - sets this repo's core.hooksPath      -> git-hooks/
+#     (repo-local only — activates pre-push signing check + post-merge
+#     auto-reinstall for this repo; does not touch other repos)
+#   - sets this repo's pull.rebase         -> false
+#     (repo-local only — post-merge only fires on a merge, not a rebase, so
+#     this guarantees `git pull` always merges and always triggers it, even
+#     when a fast-forward is possible)
 #
 # Skills are linked individually so any other files you already have in
 # ~/.claude/skills are left untouched. omz/custom is linked as a whole
@@ -121,6 +128,26 @@ echo
 echo "ccstatusline config:"
 run mkdir -p "${HOME}/.config/ccstatusline"
 link "${REPO_ROOT}/ccstatusline/settings.json" "${HOME}/.config/ccstatusline/settings.json"
+echo
+
+echo "git hooks (this repo only):"
+current_hooks_path="$(git -C "$REPO_ROOT" config --local --get core.hooksPath || true)"
+if [ "$current_hooks_path" = "${REPO_ROOT}/git-hooks" ]; then
+  echo "  ok (already wired): core.hooksPath -> git-hooks"
+else
+  run git -C "$REPO_ROOT" config --local core.hooksPath "${REPO_ROOT}/git-hooks"
+  c_green "  wired: core.hooksPath -> ${REPO_ROOT}/git-hooks"
+fi
+# post-merge only fires on a merge (fast-forward included); a rebase never
+# triggers it. This repo may inherit pull.rebase=true from global config, so
+# pin merge-on-pull locally here to guarantee `git pull` always runs post-merge.
+current_pull_rebase="$(git -C "$REPO_ROOT" config --local --get pull.rebase || true)"
+if [ "$current_pull_rebase" = "false" ]; then
+  echo "  ok (already wired): pull.rebase -> false"
+else
+  run git -C "$REPO_ROOT" config --local pull.rebase false
+  c_green "  wired: pull.rebase -> false (this repo only, so post-merge always fires on pull)"
+fi
 echo
 
 # ---- prerequisite check (warn-only; never fails the install) ----
