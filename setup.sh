@@ -85,11 +85,7 @@ fi
 
 step "Codex"
 if ! have codex; then
-  if have npm; then
-    npm install -g @openai/codex
-  else
-    echo "npm unavailable; run 'npm install -g @openai/codex' after restarting your shell"
-  fi
+  curl -fsSL https://chatgpt.com/codex/install.sh | sh
 else
   echo "already installed"
 fi
