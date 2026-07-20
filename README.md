@@ -8,8 +8,11 @@ Portable personal configuration: machine bootstrap + Claude Code settings + skil
 dotfiles/
 ├── README.md
 ├── .gitignore
-├── Brewfile               # declarative dependency list (brew bundle)
-├── setup.sh               # idempotent new-Mac bootstrap
+├── Brewfile               # macOS dependency list (brew bundle)
+├── setup.sh               # platform dispatcher + curl-pipe bootstrap
+├── mac.setup.sh           # macOS: Xcode CLT, Homebrew, Brewfile, podman VM
+├── ubuntu.setup.sh        # Ubuntu/Debian: apt, vendor repos, installers
+├── common.setup.sh        # shared tail: omz, nvm, Claude/Codex, auth checklist
 └── claude/
     ├── settings.json          # generic, machine-agnostic Claude Code user settings
     ├── install.sh             # symlinks settings.json + skills into ~/.claude
@@ -19,9 +22,9 @@ dotfiles/
 
 ## Install on a new machine
 
-On a brand-new Mac (no git credentials needed — the script installs `gh` and
-logs into GitHub via browser device flow, then clones this repo and re-execs
-its cloned self):
+On a brand-new machine (no git credentials needed — the script ensures git
+exists, clones this public repo anonymously over HTTPS, and re-execs its
+cloned self):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/moui72/dotfiles/main/setup.sh | bash
@@ -34,14 +37,23 @@ git clone https://github.com/moui72/dotfiles ~/dev/dotfiles
 ~/dev/dotfiles/setup.sh
 ```
 
-`setup.sh` is idempotent (safe to re-run) and handles the whole bootstrap:
-Xcode Command Line Tools → Homebrew → `brew bundle` against the `Brewfile`
-(git, gh, ripgrep, uv, awscli, gcloud, railway, flyctl, supabase, opentofu,
-podman, fzf/fd/zoxide, casks incl. 1Password + Ghostty) → oh-my-zsh +
-`omz/custom` symlinks → node LTS via nvm → `podman machine init` → Claude Code
-+ `claude/install.sh` → finishes with an auth checklist for the cloud CLIs
-(`gh`, `gcloud`, `aws`, `railway`, `flyctl`, `supabase`, `op`), which always
-need a one-time interactive login per machine.
+`setup.sh` detects the platform and dispatches to `mac.setup.sh` (macOS) or
+`ubuntu.setup.sh` (Ubuntu/Debian). Both are idempotent (safe to re-run):
+
+- **macOS**: Xcode Command Line Tools → Homebrew → `brew bundle` against the
+  `Brewfile` (git, gh, ripgrep, uv, awscli, gcloud, railway, flyctl, supabase,
+  opentofu, podman, fzf/fd/zoxide, casks incl. 1Password + Ghostty) →
+  `podman machine init`.
+- **Ubuntu**: apt basics (incl. `fd`/`bat` symlinked to their real names),
+  vendor apt repos (gh, gcloud, 1password-cli), official installers for
+  uv/awscli/flyctl/railway/supabase/opentofu. GUI apps and fonts are mac-only.
+  Smoke-tested in an `ubuntu:24.04` container.
+
+Both then run the shared tail (`common.setup.sh`): oh-my-zsh + `omz/custom`
+symlinks → node LTS via nvm → Claude Code + `claude/install.sh` → Codex →
+an auth checklist for the cloud CLIs (`gh`, `gcloud`, `aws`, `railway`,
+`flyctl`, `supabase`, `op`, `codex`), which always need a one-time
+interactive login per machine.
 
 To keep dependencies in sync later: edit `Brewfile`, then
 `brew bundle --file=~/dev/dotfiles/Brewfile`. Audit drift with
