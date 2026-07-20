@@ -19,8 +19,18 @@ dotfiles/
 
 ## Install on a new machine
 
+On a brand-new Mac (no git credentials needed — the script installs `gh` and
+logs into GitHub via browser device flow, then clones this repo and re-execs
+its cloned self):
+
 ```bash
-git clone <your-repo-url> ~/dev/dotfiles
+curl -fsSL https://raw.githubusercontent.com/moui72/dotfiles/main/setup.sh | bash
+```
+
+Or from an existing clone:
+
+```bash
+git clone https://github.com/moui72/dotfiles ~/dev/dotfiles
 ~/dev/dotfiles/setup.sh
 ```
 

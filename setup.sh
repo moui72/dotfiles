@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 # setup.sh — bootstrap a brand-new Mac. Idempotent: safe to re-run anytime.
 #
-#   git clone <repo-url> ~/dev/dotfiles && ~/dev/dotfiles/setup.sh
+# From a clone:      ~/dev/dotfiles/setup.sh
+# On a virgin Mac:   curl -fsSL <raw-url-of-this-file> | bash
+#   (piped mode installs CLT + brew + gh, logs into GitHub via browser
+#    device flow — no SSH keys needed — clones the repo, then re-execs
+#    the cloned copy of itself)
 #
 # Order matters only at the top (Xcode CLT -> Homebrew -> everything else).
 set -euo pipefail
 
-DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="moui72/dotfiles"
+CLONE_DIR="$HOME/dev/dotfiles"
 step() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -30,6 +35,24 @@ if [[ -x /opt/homebrew/bin/brew ]]; then
   eval "$(/opt/homebrew/bin/brew shellenv)"
   grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || \
     echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+fi
+
+# --- Locate the repo; when piped, clone it and re-exec the real script -----
+# BASH_SOURCE is unset when the script arrives on stdin (curl | bash).
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "$(dirname "${BASH_SOURCE[0]}")/Brewfile" ]]; then
+  DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  step "bootstrap: clone dotfiles repo"
+  have gh || brew install gh
+  if ! gh auth status >/dev/null 2>&1; then
+    # </dev/tty: stdin is the piped script, so give gh the real terminal
+    gh auth login --hostname github.com --git-protocol https --web </dev/tty
+  fi
+  if [[ ! -d "$CLONE_DIR/.git" ]]; then
+    mkdir -p "$(dirname "$CLONE_DIR")"
+    gh repo clone "$REPO" "$CLONE_DIR"
+  fi
+  exec bash "$CLONE_DIR/setup.sh"
 fi
 
 # --- Everything declared in the Brewfile -----------------------------------
