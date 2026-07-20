@@ -1,6 +1,6 @@
 # dotfiles
 
-Portable personal configuration. Currently: Claude Code settings + skills.
+Portable personal configuration: machine bootstrap + Claude Code settings + skills.
 
 ## Layout
 
@@ -8,6 +8,8 @@ Portable personal configuration. Currently: Claude Code settings + skills.
 dotfiles/
 ├── README.md
 ├── .gitignore
+├── Brewfile               # declarative dependency list (brew bundle)
+├── setup.sh               # idempotent new-Mac bootstrap
 └── claude/
     ├── settings.json          # generic, machine-agnostic Claude Code user settings
     ├── install.sh             # symlinks settings.json + skills into ~/.claude
@@ -18,8 +20,27 @@ dotfiles/
 ## Install on a new machine
 
 ```bash
-git clone <your-repo-url> ~/dotfiles
-~/dotfiles/claude/install.sh          # or: --dry-run to preview
+git clone <your-repo-url> ~/dev/dotfiles
+~/dev/dotfiles/setup.sh
+```
+
+`setup.sh` is idempotent (safe to re-run) and handles the whole bootstrap:
+Xcode Command Line Tools → Homebrew → `brew bundle` against the `Brewfile`
+(git, gh, ripgrep, uv, awscli, gcloud, railway, flyctl, supabase, opentofu,
+podman, fzf/fd/zoxide, casks incl. 1Password + Ghostty) → oh-my-zsh +
+`omz/custom` symlinks → node LTS via nvm → `podman machine init` → Claude Code
++ `claude/install.sh` → finishes with an auth checklist for the cloud CLIs
+(`gh`, `gcloud`, `aws`, `railway`, `flyctl`, `supabase`, `op`), which always
+need a one-time interactive login per machine.
+
+To keep dependencies in sync later: edit `Brewfile`, then
+`brew bundle --file=~/dev/dotfiles/Brewfile`. Audit drift with
+`brew bundle check` / `brew bundle cleanup` (dry-run by default).
+
+To install only the Claude Code config:
+
+```bash
+~/dev/dotfiles/claude/install.sh      # or: --dry-run to preview
 ```
 
 `install.sh` is idempotent and **symlinks** (does not copy):
