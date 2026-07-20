@@ -72,7 +72,7 @@ else
   podman machine init
 fi
 
-# --- Claude Code -----------------------------------------------------------
+# --- AI coding agents (native installers, not brew-managed; both self-update)
 step "Claude Code"
 if ! have claude; then
   curl -fsSL https://claude.ai/install.sh | bash
@@ -81,6 +81,17 @@ else
 fi
 if [[ -x "$DOTFILES/claude/install.sh" ]]; then
   "$DOTFILES/claude/install.sh"
+fi
+
+step "Codex"
+if ! have codex; then
+  if have npm; then
+    npm install -g @openai/codex
+  else
+    echo "npm unavailable; run 'npm install -g @openai/codex' after restarting your shell"
+  fi
+else
+  echo "already installed"
 fi
 
 # --- auth checklist (interactive; can't be made idempotent-silent) ---------
@@ -95,6 +106,8 @@ railway whoami >/dev/null 2>&1        && check_auth railway ok || check_auth rai
 flyctl auth whoami >/dev/null 2>&1    && check_auth fly ok     || check_auth fly     "run: flyctl auth login"
 supabase projects list >/dev/null 2>&1 && check_auth supabase ok || check_auth supabase "run: supabase login"
 op whoami >/dev/null 2>&1             && check_auth op ok      || check_auth op      "run: op signin (enable 1Password CLI integration in app)"
+have codex && codex login status >/dev/null 2>&1 \
+                                      && check_auth codex ok   || check_auth codex   "run: codex login"
 
 step "done"
 echo "Restart your terminal so shell config takes effect."
