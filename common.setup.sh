@@ -16,10 +16,16 @@ common_tail() {
       "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
   fi
   if [[ -d "$DOTFILES/omz/custom" ]]; then
-    for f in "$DOTFILES"/omz/custom/*.zsh; do
-      ln -sfn "$f" "$HOME/.oh-my-zsh/custom/$(basename "$f")"
-    done
-    echo "linked omz/custom snippets"
+    # If custom/ is already a link to the dotfiles dir, per-file links would
+    # resolve back onto the sources and overwrite them with self-symlinks.
+    if [[ "$(cd "$HOME/.oh-my-zsh/custom" 2>/dev/null && pwd -P)" == "$(cd "$DOTFILES/omz/custom" && pwd -P)" ]]; then
+      echo "omz/custom already linked as a directory"
+    else
+      for f in "$DOTFILES"/omz/custom/*.zsh; do
+        ln -sfn "$f" "$HOME/.oh-my-zsh/custom/$(basename "$f")"
+      done
+      echo "linked omz/custom snippets"
+    fi
   fi
 
   # --- node via nvm --------------------------------------------------------
