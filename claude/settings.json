@@ -53,6 +53,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "opus",
   "hooks": {
     "PermissionRequest": [
       {
@@ -60,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\"; terminal-notifier -title 'Claude Code' -message 'Permission requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); case \"$TTY\" in *\\?*|'') ;; *) [ -w \"/dev/$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\";; esac; terminal-notifier -title 'Claude Code' -message 'Permission requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
           }
         ]
       }
@@ -71,7 +72,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\"; terminal-notifier -title 'Claude Code' -message 'Input requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); case \"$TTY\" in *\\?*|'') ;; *) [ -w \"/dev/$TTY\" ] && printf '\\e]0;⚠️ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\";; esac; terminal-notifier -title 'Claude Code' -message 'Input requested' -activate com.mitchellh.ghostty -sound Tink >/dev/null 2>&1 &"
           }
         ]
       }
@@ -82,7 +83,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); [ -n \"$TTY\" ] && printf '\\e]0;✅ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\""
+            "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); case \"$TTY\" in *\\?*|'') ;; *) [ -w \"/dev/$TTY\" ] && printf '\\e]0;✅ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\";; esac"
           }
         ]
       }
@@ -101,14 +102,14 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "ccburn collect | npx -y ccstatusline@latest",
+    "command": "~/.local/bin/ccburn collect | npx -y ccstatusline@latest",
     "padding": 0
   },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "low",
   "advisorModel": "opus",
   "tui": "fullscreen",
   "skipWorkflowUsageWarning": true,
