@@ -11,7 +11,7 @@
 # or /ardd-backlog); the rest is raw prose.
 # Repo resolution: -r wins; else the git repo containing $PWD; else a
 # prompt defaulting to artifact-driven-dev.
-# Filenames are timestamp-based (i-YYYYmmddTHHMMSS-PID.md; "i" = item) —
+# Filenames are timestamp-based (i-YYYYmmddTHHMMSS-PID-RANDOM.md; "i" = item) —
 # stable under deletion (drained files are removed), unlike a max+1 counter.
 
 inbox() {
