@@ -36,6 +36,22 @@
         "type": "context-length",
         "color": "hex:FBF1C7",
         "backgroundColor": "hex:665C54",
+        "rawValue": true,
+        "merge": true
+      },
+      {
+        "id": "22",
+        "type": "custom-text",
+        "customText": " · ",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:665C54",
+        "merge": true
+      },
+      {
+        "id": "21",
+        "type": "context-percentage-usable",
+        "color": "hex:FBF1C7",
+        "backgroundColor": "hex:665C54",
         "rawValue": true
       },
       {
