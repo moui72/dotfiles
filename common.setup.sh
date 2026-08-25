@@ -15,17 +15,55 @@ common_tail() {
     RUNZSH=no KEEP_ZSHRC=yes sh -c \
       "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
   fi
+  # omz TRACKS files under its own custom/ (example.zsh, plugins/example,
+  # themes/example), so symlinking that directory to the dotfiles copy makes git
+  # report them deleted and every `omz update` dies with
+  #   error: 'custom/example.zsh' is beyond a symbolic link ... Cannot autostash
+  # ZSH_CUSTOM is the supported way to relocate the directory: omz's checkout
+  # stays pristine, and subdirs (plugins/, completions/, themes/) come along too,
+  # which per-file *.zsh symlinks never covered.
+  zshrc="$HOME/.zshrc"
   if [[ -d "$DOTFILES/omz/custom" ]]; then
-    # If custom/ is already a link to the dotfiles dir, per-file links would
-    # resolve back onto the sources and overwrite them with self-symlinks.
-    if [[ "$(cd "$HOME/.oh-my-zsh/custom" 2>/dev/null && pwd -P)" == "$(cd "$DOTFILES/omz/custom" && pwd -P)" ]]; then
-      echo "omz/custom already linked as a directory"
-    else
-      for f in "$DOTFILES"/omz/custom/*.zsh; do
-        ln -sfn "$f" "$HOME/.oh-my-zsh/custom/$(basename "$f")"
-      done
-      echo "linked omz/custom snippets"
+    want="export ZSH_CUSTOM=\"\$HOME/${DOTFILES#$HOME/}/omz/custom\""
+    # Undo the old whole-directory symlink, if this machine still has one.
+    if [[ -L "$HOME/.oh-my-zsh/custom" ]]; then
+      rm "$HOME/.oh-my-zsh/custom"
+      git -C "$HOME/.oh-my-zsh" checkout -- custom 2>/dev/null || mkdir -p "$HOME/.oh-my-zsh/custom"
+      echo "removed legacy custom/ directory symlink"
     fi
+    if [[ ! -f "$zshrc" ]]; then
+      echo "no ~/.zshrc yet; add before 'source \$ZSH/oh-my-zsh.sh':  $want"
+    elif grep -qE '^[[:space:]]*(export[[:space:]]+)?ZSH_CUSTOM=' "$zshrc"; then
+      echo "ZSH_CUSTOM already set in ~/.zshrc: $(grep -m1 -E '^[[:space:]]*(export[[:space:]]+)?ZSH_CUSTOM=' "$zshrc")"
+    elif grep -qE '^[[:space:]]*#[[:space:]]*ZSH_CUSTOM=' "$zshrc"; then
+      # omz's own template ships this placeholder above the source line.
+      WANT="$want" perl -i -pe '$done ||= s{^\s*#\s*ZSH_CUSTOM=.*}{$ENV{WANT}} unless $done' "$zshrc"
+      echo "set ZSH_CUSTOM in ~/.zshrc (replaced omz placeholder)"
+    elif grep -q 'source \$ZSH/oh-my-zsh.sh' "$zshrc"; then
+      # Must land BEFORE omz is sourced, so insert rather than append.
+      WANT="$want" perl -i -pe 'print "$ENV{WANT}\n" if m{^source \$ZSH/oh-my-zsh\.sh} && !$done++' "$zshrc"
+      echo "set ZSH_CUSTOM in ~/.zshrc (inserted above omz source line)"
+    else
+      echo "WARNING: could not place ZSH_CUSTOM in ~/.zshrc; add manually: $want"
+    fi
+  fi
+
+  # --- ~/.zsh_private: company/machine-local snippets ----------------------
+  # Sourced AFTER oh-my-zsh so it can override portable snippets and plugins.
+  # Kept outside this public repo so employer-specific config cannot leak.
+  step "~/.zsh_private"
+  mkdir -p "$HOME/.zsh_private"
+  chmod 700 "$HOME/.zsh_private"
+  if [[ ! -f "$zshrc" ]]; then
+    echo "no ~/.zshrc yet; add a loop sourcing ~/.zsh_private/*.zsh after oh-my-zsh"
+  elif grep -q '\.zsh_private' "$zshrc"; then
+    echo "already sourced from ~/.zshrc"
+  elif grep -q 'source \$ZSH/oh-my-zsh.sh' "$zshrc"; then
+    # Appended AFTER the omz source line, so these snippets can override it.
+    perl -i -pe '$_ .= qq{\n# Company-specific customizations - kept out of the portable dotfiles repo.\n# (N) qualifier = nullglob, so this does not error if the dir is ever empty.\nfor f in ~/.zsh_private/*.zsh(N); do\n  source "\$f"\ndone\n} if m{^source \$ZSH/oh-my-zsh\.sh} && !$done++' "$zshrc"
+    echo "added ~/.zsh_private source loop to ~/.zshrc"
+  else
+    echo "WARNING: could not add the ~/.zsh_private loop to ~/.zshrc; add it manually"
   fi
 
   # --- node via nvm --------------------------------------------------------

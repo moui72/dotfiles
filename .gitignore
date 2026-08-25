@@ -28,3 +28,9 @@ review-*.json
 
 # --- install.sh backups ---
 *.bak-*
+
+# --- omz custom: per-machine, not this repo's to sync ---
+# Upstream clone (has its own .git; would become a broken gitlink if added):
+omz/custom/plugins/claude-code/
+# Duplicate of that plugin's completions/_claude:
+omz/custom/completions/

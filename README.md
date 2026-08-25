@@ -13,6 +13,10 @@ dotfiles/
 ├── mac.setup.sh           # macOS: Xcode CLT, Homebrew, Brewfile, podman VM
 ├── ubuntu.setup.sh        # Ubuntu/Debian: apt, vendor repos, installers
 ├── common.setup.sh        # shared tail: omz, nvm, Claude/Codex, auth checklist
+├── omz/custom/            # PORTABLE zsh snippets, plugins, completions — loaded via
+│                          # $ZSH_CUSTOM. Company-specific ones go in ~/.zsh_private
+├── git-hooks/             # pre-push / post-merge / post-rewrite
+├── ccstatusline/          # status line config
 └── claude/
     ├── settings.json          # generic, machine-agnostic Claude Code user settings
     ├── install.sh             # symlinks settings.json + skills into ~/.claude
@@ -49,8 +53,8 @@ git clone https://github.com/moui72/dotfiles ~/dev/dotfiles
   uv/awscli/flyctl/railway/supabase/opentofu. GUI apps and fonts are mac-only.
   Smoke-tested in an `ubuntu:24.04` container.
 
-Both then run the shared tail (`common.setup.sh`): oh-my-zsh + `omz/custom`
-symlinks → node LTS via nvm → Claude Code + `claude/install.sh` → Codex →
+Both then run the shared tail (`common.setup.sh`): oh-my-zsh + `ZSH_CUSTOM`
+pointed at `omz/custom` (see below) → node LTS via nvm → Claude Code + `claude/install.sh` → Codex →
 an auth checklist for the cloud CLIs (`gh`, `gcloud`, `aws`, `railway`,
 `flyctl`, `supabase`, `op`, `codex`), which always need a one-time
 interactive login per machine.
@@ -58,6 +62,105 @@ interactive login per machine.
 To keep dependencies in sync later: edit `Brewfile`, then
 `brew bundle --file=~/dev/dotfiles/Brewfile`. Audit drift with
 `brew bundle check` / `brew bundle cleanup` (dry-run by default).
+
+## oh-my-zsh: `omz/custom` is wired up with `ZSH_CUSTOM`
+
+`omz/custom/` in this repo *is* the live custom directory. `~/.zshrc` points at it:
+
+```bash
+export ZSH_CUSTOM="$HOME/dotfiles/omz/custom"   # must be BEFORE `source $ZSH/oh-my-zsh.sh`
+```
+
+(Path follows wherever this repo is cloned — `~/dev/dotfiles/omz/custom` if you
+used the clone path above.)
+
+`common.setup.sh` sets that line idempotently (replacing omz's commented
+placeholder, or inserting above the `source` line), and removes the legacy
+directory symlink described below if it finds one. Nothing under
+`~/.oh-my-zsh/` is touched, so `omz update` stays clean.
+
+Everything in the directory is picked up, not just top-level snippets:
+
+| Path | Loaded as |
+| --- | --- |
+| `omz/custom/*.zsh` | sourced on every interactive shell |
+| `omz/custom/plugins/<name>/` | custom plugin — enable by adding `<name>` to `plugins=(...)` in `~/.zshrc` |
+| `omz/custom/completions/` | added to `$fpath` |
+
+Two of those paths are **gitignored and installed per machine**, because they're
+an upstream clone with its own `.git` (which would commit as a broken gitlink):
+
+```bash
+git clone https://github.com/1160054/claude-code-zsh-completion \
+  "$ZSH_CUSTOM/plugins/claude-code"
+```
+
+`~/.zshrc` already lists `claude-code` in `plugins=(...)`, so a machine without
+that clone gets a startup warning until you run the command above.
+`omz/custom/completions/_claude` is a copy of the same plugin's completion and is
+ignored for the same reason — everything *else* under `omz/custom/` is tracked
+here and does travel with `git pull`.
+| `omz/custom/themes/` | selectable via `ZSH_THEME` |
+
+### Do NOT symlink `~/.oh-my-zsh/custom` to this directory
+
+oh-my-zsh **tracks** files inside its own `custom/` (`example.zsh`,
+`plugins/example/`, `themes/example.zsh-theme`). Replacing that directory with a
+symlink makes git report those tracked files as deleted, and every update then
+fails on the autostash:
+
+```
+error: 'custom/example.zsh' is beyond a symbolic link
+fatal: Unable to process path custom/example.zsh
+Cannot save the current worktree state
+fatal: Cannot autostash
+There was an error updating. Try again later?
+```
+
+Per-file `*.zsh` symlinks into `~/.oh-my-zsh/custom/` avoid that error but
+silently drop `plugins/`, `completions/`, and `themes/`. `ZSH_CUSTOM` is the
+mechanism omz provides for exactly this, and is the only supported layout here.
+
+If a machine ever ends up with the directory symlink, undo it with:
+
+```bash
+rm ~/.oh-my-zsh/custom
+git -C ~/.oh-my-zsh checkout -- custom     # restore omz's own tracked files
+~/dotfiles/setup.sh                        # re-sets ZSH_CUSTOM
+```
+
+### Company/machine-local snippets go in `~/.zsh_private`, not here
+
+Because the loaded directory *is* this public repo, anything dropped in
+`omz/custom/` is a candidate for `git push`. **`omz/custom/` is for portable
+snippets only** — no org names, GCP project ids, internal hostnames, tokens, or
+employer-specific workflow.
+
+Everything else belongs in `~/.zsh_private/`, which `~/.zshrc` sources *after*
+oh-my-zsh:
+
+```bash
+# Company/Pager-specific customizations — kept out of the portable dotfiles repo.
+# (N) qualifier = nullglob, so this doesn't error if the dir is ever empty.
+for f in ~/.zsh_private/*.zsh(N); do
+  source "$f"
+done
+```
+
+`common.setup.sh` creates the directory (mode 700) and adds that loop if it's
+missing. Why this rather than gitignoring inside `omz/custom/`:
+
+- **It can't leak.** A gitignored file one `git add -f` or one `.gitignore` edit
+  away from being committed is a standing risk; a file outside the repo isn't.
+- **It loads last, so it wins.** Sourced after `oh-my-zsh.sh`, it can override a
+  portable snippet or an omz plugin. That ordering is the point.
+- **One home, one copy.** Do NOT keep the same snippet in both places. The
+  `~/.zsh_private` copy silently wins, so edits to the `omz/custom/` twin appear
+  to do nothing — a genuinely confusing failure. If a snippet is
+  employer-specific, it lives in `~/.zsh_private` and nowhere else.
+
+Corollary when debugging: a missing helper is more likely to be in
+`~/.zsh_private` than absent. Check there before concluding a function is gone.
 
 To install only the Claude Code config:
 
@@ -123,6 +226,9 @@ Set them up per machine as needed:
   /plugin marketplace add claude-plugins-official
   ```
 
+- **Company / work-specific shell snippets** live in `~/.zsh_private/` (see the
+  oh-my-zsh section above), never in `omz/custom/`.
+
 - **Company / work-specific skills and their secrets** (Jira/Confluence, Qase,
   database proxies, etc.) are deliberately **not** in this repo. They depend on
   org URLs, credentials, and shell helpers that don't belong in a portable personal
@@ -151,7 +257,7 @@ useful as-is on a different setup:
   Homebrew cask under `/opt/homebrew/Caskroom/...`).
 - **nvm** is configured via oh-my-zsh's built-in `nvm` plugin (lazy-loaded, see
   the zstyle config in `~/.zshrc`), not a file in `omz/custom/` — there's
-  nothing to symlink for it.
+  nothing in this repo for it.
 
 ## Secrets
 
