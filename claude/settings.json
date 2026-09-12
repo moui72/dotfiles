@@ -53,7 +53,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus",
+  "model": "fable",
   "hooks": {
     "PermissionRequest": [
       {
@@ -102,11 +102,12 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.local/bin/ccburn collect | npx -y ccstatusline@latest",
+    "command": "sh $HOME/.claude/statusline-command.sh",
     "padding": 0
   },
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "low",
@@ -116,5 +117,10 @@
   "editorMode": "normal",
   "preferredNotifChannel": "ghostty",
   "remoteControlAtStartup": false,
-  "inputNeededNotifEnabled": true
+  "inputNeededNotifEnabled": true,
+  "modelSettings": {
+    "claude-fable-5-1": {
+      "effortLevel": "xhigh"
+    }
+  }
 }
