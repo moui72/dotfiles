@@ -1,0 +1,4 @@
+# Codex status line, matched to ccstatusline using codex-status supported fields.
+alias cdxstatus="codex-status --format time,activity,daily,recent,total,model,approval,directory --override-time=🕒 --override-activity=💭 --override-daily=🕔 --override-recent=🔄 --override-total=📦 --override-model=🤖 --override-approval=🛂 --override-directory=📁"
+alias cdxwatch="codex-status --watch --format time,activity,daily,recent,total,model,approval,directory --override-time=🕒 --override-activity=💭 --override-daily=🕔 --override-recent=🔄 --override-total=📦 --override-model=🤖 --override-approval=🛂 --override-directory=📁"
+alias cdx='tmux new-session -s codex-status codex \; split-window -v -l 4 "codex-status --watch --format time,activity,daily,recent,total,model,approval,directory --override-time=🕒 --override-activity=💭 --override-daily=🕔 --override-recent=🔄 --override-total=📦 --override-model=🤖 --override-approval=🛂 --override-directory=📁" \; select-pane -t 0'
