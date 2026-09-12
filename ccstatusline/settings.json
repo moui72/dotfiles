@@ -1,12 +1,12 @@
 {
-  "version": 3,
+  "version": 4,
   "lines": [
     [
       {
         "id": "16",
         "type": "custom-symbol",
         "customSymbol": "✨",
-        "color": "hex:3C3836",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:D65D0E",
         "merge": true,
         "bold": true
@@ -14,7 +14,7 @@
       {
         "id": "1",
         "type": "model",
-        "color": "hex:3C3836",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:D65D0E",
         "bold": true,
         "rawValue": true
@@ -27,14 +27,14 @@
         "id": "17",
         "type": "custom-symbol",
         "customSymbol": "📐",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:665C54",
         "merge": true
       },
       {
         "id": "3",
         "type": "context-length",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:665C54",
         "rawValue": true,
         "merge": true
@@ -43,14 +43,14 @@
         "id": "22",
         "type": "custom-text",
         "customText": " · ",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:665C54",
         "merge": true
       },
       {
         "id": "21",
         "type": "context-percentage-usable",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:665C54",
         "rawValue": true
       },
@@ -62,14 +62,14 @@
         "id": "18",
         "type": "custom-symbol",
         "customSymbol": "⚡",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:689D6A",
         "merge": true
       },
       {
         "id": "9",
         "type": "total-speed",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:689D6A",
         "rawValue": true
       },
@@ -81,14 +81,14 @@
         "id": "19",
         "type": "custom-symbol",
         "customSymbol": "🔥",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:98971A",
         "merge": true
       },
       {
         "id": "15",
         "type": "tokens-total",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:98971A",
         "rawValue": true
       },
@@ -100,14 +100,14 @@
         "id": "20",
         "type": "custom-symbol",
         "customSymbol": "📊",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:D79921",
         "merge": true
       },
       {
         "id": "11",
         "type": "session-usage",
-        "color": "hex:282828",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:D79921",
         "rawValue": true
       },
@@ -118,7 +118,7 @@
       {
         "id": "12",
         "type": "git-origin-repo",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:458588",
         "rawValue": true
       },
@@ -129,7 +129,7 @@
       {
         "id": "5",
         "type": "git-branch",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:B16286"
       },
       {
@@ -139,7 +139,7 @@
       {
         "id": "7",
         "type": "git-changes",
-        "color": "hex:FBF1C7",
+        "color": "hex:FFFFFF",
         "backgroundColor": "hex:CC241D"
       }
     ],
