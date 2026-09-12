@@ -8,7 +8,8 @@
 #   - writes dotfiles path                 -> ~/.claude/.dotfiles-claude-dir
 #     (used by the ConfigChange hook to sync /config edits back to the repo)
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
-#   - symlinks omz/custom                  -> ~/.oh-my-zsh/custom
+#   - removes any legacy ~/.oh-my-zsh/custom symlink, and checks that
+#     ~/.zshrc sets ZSH_CUSTOM (setup.sh is what writes that line)
 #   - symlinks ccstatusline/settings.json  -> ~/.config/ccstatusline/settings.json
 #   - sets this repo's core.hooksPath      -> git-hooks/
 #     (repo-local only — activates pre-push signing check + post-merge
@@ -19,12 +20,16 @@
 #     when a fast-forward is possible)
 #
 # Skills are linked individually so any other files you already have in
-# ~/.claude/skills are left untouched. omz/custom is linked as a whole
-# directory, not per-file — oh-my-zsh only globs top-level *.zsh files
-# directly in $ZSH_CUSTOM (confirmed against oh-my-zsh.sh), so anything
-# machine-local that needs sourcing (e.g. a vault, stock example files)
-# has to live inside omz/custom itself, not alongside it. Per-file symlinks
-# were tried first and abandoned for this reason.
+# ~/.claude/skills are left untouched.
+#
+# omz/custom is NOT symlinked over ~/.oh-my-zsh/custom. oh-my-zsh tracks files
+# under its own custom/ (example.zsh, plugins/example, themes/example), so the
+# symlink made git report them deleted and every `omz update` died with
+# "error: 'custom/example.zsh' is beyond a symbolic link ... Cannot autostash".
+# ZSH_CUSTOM is the supported way to relocate the directory, and it covers
+# plugins/, completions/ and themes/ too, which per-file *.zsh symlinks never
+# did. setup.sh writes that line into ~/.zshrc; this script only tears down the
+# legacy symlink and warns if the line is missing.
 #
 # settings.json copy behaviour:
 #   - symlink at target  → convert to real file (copy from dotfiles)
@@ -118,10 +123,29 @@ echo
 
 echo "oh-my-zsh custom dir:"
 omz_home="${HOME}/.oh-my-zsh"
+case "$REPO_ROOT" in
+  "$HOME"/*) omz_want="export ZSH_CUSTOM=\"\$HOME/${REPO_ROOT#$HOME/}/omz/custom\"" ;;
+  *)         omz_want="export ZSH_CUSTOM=\"${REPO_ROOT}/omz/custom\"" ;;
+esac
 if [ ! -d "$omz_home" ]; then
   c_yellow "  skip: ~/.oh-my-zsh not found (oh-my-zsh not installed?)"
 else
-  link "${REPO_ROOT}/omz/custom" "${omz_home}/custom"
+  # Never symlink $omz_home/custom — omz tracks files under it, and the link
+  # makes every `omz update` die on "beyond a symbolic link". Tear down the
+  # legacy link if a machine still has one; setup.sh owns the ~/.zshrc edit.
+  if [ -L "${omz_home}/custom" ]; then
+    c_yellow "  removing legacy custom/ symlink (breaks \`omz update\`)"
+    run rm "${omz_home}/custom"
+    run git -C "$omz_home" checkout -- custom 2>/dev/null || run mkdir -p "${omz_home}/custom"
+  else
+    echo "  ok (not symlinked): ${omz_home/#$HOME/~}/custom"
+  fi
+  if grep -qE '^[[:space:]]*(export[[:space:]]+)?ZSH_CUSTOM=' "${HOME}/.zshrc" 2>/dev/null; then
+    echo "  ok (ZSH_CUSTOM set in ~/.zshrc)"
+  else
+    c_yellow "  ZSH_CUSTOM not set in ~/.zshrc — run setup.sh, or add before"
+    c_yellow "  'source \$ZSH/oh-my-zsh.sh':  $omz_want"
+  fi
 fi
 echo
 

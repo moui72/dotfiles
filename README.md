@@ -86,6 +86,7 @@ Everything in the directory is picked up, not just top-level snippets:
 | `omz/custom/*.zsh` | sourced on every interactive shell |
 | `omz/custom/plugins/<name>/` | custom plugin — enable by adding `<name>` to `plugins=(...)` in `~/.zshrc` |
 | `omz/custom/completions/` | added to `$fpath` |
+| `omz/custom/themes/` | selectable via `ZSH_THEME` |
 
 Two of those paths are **gitignored and installed per machine**, because they're
 an upstream clone with its own `.git` (which would commit as a broken gitlink):
@@ -100,7 +101,6 @@ that clone gets a startup warning until you run the command above.
 `omz/custom/completions/_claude` is a copy of the same plugin's completion and is
 ignored for the same reason — everything *else* under `omz/custom/` is tracked
 here and does travel with `git pull`.
-| `omz/custom/themes/` | selectable via `ZSH_THEME` |
 
 ### Do NOT symlink `~/.oh-my-zsh/custom` to this directory
 
@@ -126,8 +126,13 @@ If a machine ever ends up with the directory symlink, undo it with:
 ```bash
 rm ~/.oh-my-zsh/custom
 git -C ~/.oh-my-zsh checkout -- custom     # restore omz's own tracked files
-~/dotfiles/setup.sh                        # re-sets ZSH_CUSTOM
+~/dev/dotfiles/setup.sh                    # re-sets ZSH_CUSTOM
 ```
+
+`claude/install.sh` does the same teardown (and warns if `~/.zshrc` has no
+`ZSH_CUSTOM` line), which matters because the `post-merge` hook runs it after
+every `git pull` — it used to *recreate* this symlink, undoing the fix on each
+pull. Writing the `~/.zshrc` line stays `setup.sh`'s job.
 
 ### Company/machine-local snippets go in `~/.zsh_private`, not here
 
