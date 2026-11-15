@@ -19,10 +19,12 @@ local_hook="$repo_root/.git/hooks/pre-push"
 while read -r local_ref local_oid remote_ref remote_oid; do
   [[ "$local_oid" == "$zero_oid" ]] && continue  # deleting a ref, nothing to check
 
+  # Only commits that exist on no remote ref are ours to check. Commits already on the remote
+  # (e.g. main's GitHub-signed merges brought in by merging main) can't be resigned anyway.
   if [[ "$remote_oid" == "$zero_oid" ]]; then
     range_commits=$(git rev-list "$local_oid" --not --remotes="$remote_name" 2>/dev/null)
   else
-    range_commits=$(git rev-list "$remote_oid..$local_oid" 2>/dev/null)
+    range_commits=$(git rev-list "$local_oid" --not "$remote_oid" --remotes="$remote_name" 2>/dev/null)
   fi
 
   [[ -z "$range_commits" ]] && continue
