@@ -41,6 +41,9 @@ if [[ -e ~/.hammerspoon/init.lua && ! -L ~/.hammerspoon/init.lua ]]; then
 fi
 ln -sfn "$DOTFILES/hammerspoon/init.lua" ~/.hammerspoon/init.lua
 echo "linked ~/.hammerspoon/init.lua"
+# Launch it once; init.lua then registers it as a login item (hs.autoLaunch).
+# First cmd+pgup asks to let Hammerspoon control Ghostty: click Allow.
+open -g /Applications/Hammerspoon.app
 
 # --- podman machine (linux VM; not needed on native linux) -----------------
 step "podman machine"

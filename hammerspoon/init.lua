@@ -3,6 +3,8 @@
 -- Resolve the symlink so this works wherever the dotfiles repo is cloned.
 local HERE = hs.fs.pathToAbsolute(hs.configdir .. "/init.lua"):match("(.*)/")
 
+hs.autoLaunch(true)  -- start at login, so the hotkeys below survive a reboot
+
 -- cmd+pgup in Ghostty (fn+cmd+up on a laptop keyboard): fork the focused Claude Code session into a new tab.
 -- The hotkey is only enabled while Ghostty is frontmost, so other apps keep cmd+pgup. Overrides Ghostty's default cmd+pgup (scroll_page_up).
 local forkTab = hs.hotkey.new({ "cmd" }, "pageup", function()
