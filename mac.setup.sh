@@ -35,11 +35,13 @@ brew bundle --file="$DOTFILES/Brewfile"
 # --- Hammerspoon config (cmd+pgup in Ghostty forks the Claude session) ------
 step "Hammerspoon config"
 mkdir -p ~/.hammerspoon
-if [[ -e ~/.hammerspoon/init.lua && ! -L ~/.hammerspoon/init.lua ]]; then
-  mv ~/.hammerspoon/init.lua ~/.hammerspoon/init.lua.bak
-  echo "backed up existing init.lua to init.lua.bak"
+hs_init=~/.hammerspoon/init.lua
+if [[ -e "$hs_init" || -L "$hs_init" ]] && [[ "$(readlink "$hs_init")" != "$DOTFILES/hammerspoon/init.lua" ]]; then
+  bak="$hs_init.bak.$(date +%Y%m%d%H%M%S)"
+  mv "$hs_init" "$bak"
+  echo "backed up existing init.lua to $bak (merge anything you still need into dotfiles/hammerspoon/init.lua)"
 fi
-ln -sfn "$DOTFILES/hammerspoon/init.lua" ~/.hammerspoon/init.lua
+ln -sfn "$DOTFILES/hammerspoon/init.lua" "$hs_init"
 echo "linked ~/.hammerspoon/init.lua"
 # Launch it once; init.lua then registers it as a login item (hs.autoLaunch).
 # First cmd+pgup asks to let Hammerspoon control Ghostty: click Allow.
