@@ -44,4 +44,5 @@ cask "gcloud-cli"
 cask "1password"
 cask "1password-cli"      # `op` — commit signing + secret injection
 cask "ghostty"            # your terminal
+cask "hammerspoon"        # hotkeys: cmd+pgup in Ghostty forks the Claude session (hammerspoon/)
 cask "font-jetbrains-mono-nerd-font"  # icons for statuslines/prompts

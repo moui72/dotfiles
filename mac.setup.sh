@@ -32,6 +32,16 @@ fi
 step "brew bundle"
 brew bundle --file="$DOTFILES/Brewfile"
 
+# --- Hammerspoon config (cmd+pgup in Ghostty forks the Claude session) ------
+step "Hammerspoon config"
+mkdir -p ~/.hammerspoon
+if [[ -e ~/.hammerspoon/init.lua && ! -L ~/.hammerspoon/init.lua ]]; then
+  mv ~/.hammerspoon/init.lua ~/.hammerspoon/init.lua.bak
+  echo "backed up existing init.lua to init.lua.bak"
+fi
+ln -sfn "$DOTFILES/hammerspoon/init.lua" ~/.hammerspoon/init.lua
+echo "linked ~/.hammerspoon/init.lua"
+
 # --- podman machine (linux VM; not needed on native linux) -----------------
 step "podman machine"
 if podman machine inspect >/dev/null 2>&1; then
