@@ -86,6 +86,15 @@
             "command": "TTY=$(ps -o tty= -p $PPID | tr -d ' '); case \"$TTY\" in *\\?*|'') ;; *) [ -w \"/dev/$TTY\" ] && printf '\\e]0;✅ %s\\a' \"$(basename \"$PWD\")\" > \"/dev/$TTY\";; esac"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/skills/project/hooks/project_stop.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "ConfigChange": [
@@ -95,6 +104,28 @@
           {
             "type": "command",
             "command": "DOTFILES_DIR=$(cat ~/.claude/.dotfiles-claude-dir 2>/dev/null); [ -n \"$DOTFILES_DIR\" ] && cp ~/.claude/settings.json \"$DOTFILES_DIR/settings.json\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/skills/project/hooks/project_context.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ~/.claude/skills/project/hooks/project_context.py",
+            "timeout": 10
           }
         ]
       }

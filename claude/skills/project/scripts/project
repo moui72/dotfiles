@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# `project <verb> ...`: runs project.py with this machine's profile. Symlink it onto PATH
+# (e.g. ~/.local/bin/project). `project kick` runs the profile's `kick` command.
+src="${BASH_SOURCE[0]}"
+while [ -L "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"; src="$(readlink "$src")"; [[ $src != /* ]] && src="$dir/$src"
+done
+exec python3 "$(cd -P "$(dirname "$src")" && pwd)/project.py" "$@"

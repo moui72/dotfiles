@@ -8,6 +8,9 @@
 #   - writes dotfiles path                 -> ~/.claude/.dotfiles-claude-dir
 #     (used by the ConfigChange hook to sync /config edits back to the repo)
 #   - symlinks claude/skills/<each-skill>  -> ~/.claude/skills/<each-skill>
+#   - symlinks skills/project/scripts/project -> ~/.local/bin/project
+#     (the project skill's tracker and notes dir come from a per-machine
+#     ~/.config/project-skill/profile.json, which is never kept in this repo)
 #   - removes any legacy ~/.oh-my-zsh/custom symlink, and checks that
 #     ~/.zshrc sets ZSH_CUSTOM (setup.sh is what writes that line)
 #   - symlinks ccstatusline/settings.json  -> ~/.config/ccstatusline/settings.json
@@ -119,6 +122,13 @@ for skill_dir in "${SCRIPT_DIR}"/skills/*/; do
   name="$(basename "$skill_dir")"
   link "${skill_dir%/}" "${CLAUDE_HOME}/skills/${name}"
 done
+echo
+
+echo "project skill CLI (per-machine profile: ~/.config/project-skill/profile.json):"
+run mkdir -p "${HOME}/.local/bin"
+link "${SCRIPT_DIR}/skills/project/scripts/project" "${HOME}/.local/bin/project"
+[ -e "${HOME}/.config/project-skill/profile.json" ] \
+  || c_yellow "  no profile yet: tracker 'none', notes in ~/Documents/projects (see skills/project/profile.example.json)"
 echo
 
 echo "oh-my-zsh custom dir:"
