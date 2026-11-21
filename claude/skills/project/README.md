@@ -147,11 +147,13 @@ If you use this whole dotfiles repo, `claude/install.sh` does steps 1 and 2.
    }
    ```
 
-4. **Write a profile** (optional). With no profile, there is no tracker and notes live in `~/Documents/projects`. To change that, copy `profile.example.json` to `~/.config/project-skill/profile.json` and edit it. The profile is per machine and is never kept in this repo.
+4. **Write a profile** (optional). With no profile, there is no tracker, the vault is `~/Documents`, and notes live in `~/Documents/projects`. To change that, copy `profile.example.json` to `~/.config/project-skill/profile.json` and edit it. The profile is per machine and is never kept in this repo.
 
    | Key | Meaning |
    |---|---|
-   | `notes_dir` | Where the notes live. Put it in a git repo if you want history. |
+   | `vault_dir` | The notes vault. The `todo` and `status-report` skills keep todos in its `todo/` folder. |
+| `notes_dir` | Where the project notes live (default `<vault_dir>/projects`). Put it in a git repo if you want history. |
+| `issue_url`, `issue_field` | How `todo` turns `--issue KEY` into a link, and which frontmatter field holds it. |
    | `tracker` | `none`, `linear` or `jira`. The default; a note can override it. |
    | `github_org` | The owner assumed for a bare `repo#123` reference in a note. |
    | `done_statuses` | Statuses that count as closed. For Linear, use `["Done", "Canceled", "Duplicate"]`. |

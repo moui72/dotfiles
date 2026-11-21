@@ -11,7 +11,9 @@ One note per project at `<notes_dir>/<slug>.md`. **The note is the source of tru
 ## Profile
 
 Each machine has its own profile at `~/.config/project-skill/profile.json` (or `$PROJECT_SKILL_PROFILE`). The profile is never kept in this repo. It sets:
-- `notes_dir`
+- `vault_dir`: the notes vault, which also holds `todo/` for the `todo` and `status-report` skills
+- `notes_dir`: default `<vault_dir>/projects`
+- `issue_url` and `issue_field`: how `todo` links a tracker key
 - `tracker`: `none`, `jira` or `linear`. This is the default for every note.
 - `github_org`: the owner for bare `repo#123` references
 - `done_statuses` and `in_flight_statuses`
@@ -19,7 +21,7 @@ Each machine has its own profile at `~/.config/project-skill/profile.json` (or `
 - `kick`: a shell command for `project kick`
 - backend settings, such as `jira.client_dir` or `linear.api_key_file`
 
-With no profile file, the tracker is `none` and notes live in `~/Documents/projects`. `project profile` prints the profile in effect. **If the profile has `instructions`, read that file before syncing.** The SessionStart hook also points to it.
+With no profile file, the tracker is `none`, the vault is `~/Documents`, and notes live in `~/Documents/projects`. `project profile` prints the profile in effect. **If the profile has `instructions`, read that file before syncing.** The SessionStart hook also points to it.
 
 Tracker backends are modules in `scripts/backends/`. `__init__.py` documents the interface: issues cross the boundary as flat dicts, so nothing above that layer reads a tracker's raw JSON. To add a tracker, write `backends/<name>.py` and set `"tracker": "<name>"`.
 
