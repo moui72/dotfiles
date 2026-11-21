@@ -5,6 +5,10 @@ Commands:
   profile                    show this machine's profile (notes dir, tracker, config file)
   list                       one line per project note
   status NAME                note summary + staleness
+  todo TITLE [--area A] [--issue KEY|URL] [--due YYYY-MM-DD] [--slug S] [--body-file F | --body -]
+       [--dry-run] [--no-commit]
+                             write a todo note to <vault_dir>/todo in the format Todos.base reads, and
+                             commit only that file. `todo --list-areas` prints the areas that have a view.
   report [--offline]         everything on your plate: open todos in <vault_dir>/todo, each project's
                              next step and staleness, and tracker issues assigned to you that no
                              note claims. Read-only. --offline skips the tracker and the vault pull.
@@ -42,6 +46,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 
@@ -576,6 +581,76 @@ def stale_flags(meta):
     return flags
 
 
+# ---------- todos: notes in <vault_dir>/todo (the script owns the format) ----------
+
+def todo_areas():
+    """The closed area vocabulary: every area with its own view in Todos.base."""
+    base = PROFILE["vault_dir"] / "Todos.base"
+    return sorted(set(re.findall(r'area == "([^"]+)"', base.read_text()))) if base.exists() else []
+
+
+def todo_issue(issue):
+    """A bare key, or a Jira-style browse URL, becomes the profile's issue_url; any other URL is kept as given."""
+    is_url = re.match(r"https?://", issue)
+    if is_url and "/browse/" not in issue:
+        return issue
+    key = re.sub(r"[/?].*$", "", re.sub(r"^.*/browse/", "", issue)).upper()
+    if not re.fullmatch(KEY_RE, key):
+        sys.exit(f"todo: --issue must be a key like ABC-123 or a URL (got {issue!r})")
+    if PROFILE["issue_url"]:
+        return PROFILE["issue_url"].replace("{key}", key)
+    if is_url:
+        return issue
+    sys.exit(f"todo: --issue {key}: no issue_url in this machine's profile; pass a full URL")
+
+
+def cmd_todo(args):
+    root = PROFILE["vault_dir"] / "todo"
+    if args.list_areas:
+        print("\n".join(todo_areas()))
+        return
+    if not root.is_dir():
+        sys.exit(f"todo: folder not found: {root} (create it, or set vault_dir in the profile)")
+    title = " ".join((args.title or "").split())
+    if not title:
+        sys.exit("todo: a TITLE is required")
+    issue = todo_issue(issue=args.issue) if args.issue else ""
+    if args.due:
+        try:
+            ok = re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.due) and date.fromisoformat(args.due)
+        except ValueError:
+            ok = False
+        if not ok:
+            sys.exit(f"todo: --due must be a real date as YYYY-MM-DD (got {args.due!r})")
+    areas = todo_areas()
+    if args.area and args.area not in areas:
+        print(f"todo: WARNING area {args.area!r} has no view in Todos.base (known: {', '.join(areas) or 'none'}). "
+              "It will show in Active only, until a view is added.", file=sys.stderr)
+    plain = "".join(c for c in unicodedata.normalize("NFD", args.slug or title) if not unicodedata.combining(c))
+    slug = re.sub(r"[^a-z0-9]+", "-", plain.lower()).strip("-")[:60].strip("-")
+    if not slug:
+        sys.exit("todo: could not derive a slug from the title; pass --slug")
+    path = root / f"{slug}.md"
+    if path.exists() or (root / "completed" / f"{slug}.md").exists():
+        sys.exit(f"todo: refusing to overwrite existing todo: {slug}.md (pass a more specific --slug)")
+    body = sys.stdin.read() if args.body == "-" else Path(args.body_file).expanduser().read_text() if args.body_file else ""
+    lines = body.strip("\n").splitlines()
+    if lines and lines[0].startswith("# "):  # the title heading is written here; drop a duplicate
+        lines = "\n".join(lines[1:]).strip("\n").splitlines()
+    quoted = title.replace("\\", "\\\\").replace('"', '\\"')
+    head = ["---", "done: false", f'title: "{quoted}"'] + ([f"{PROFILE['issue_field']}: {issue}"] if issue else []) \
+        + [f"area: {args.area or ''}".rstrip(), f"due: {args.due or ''}".rstrip(), "---", f"# {title}"]
+    note = "\n".join(head + ([""] + lines if lines else [])) + "\n"
+    if args.dry_run:
+        print(f"todo: would write {path}", file=sys.stderr)
+        print(note, end="")
+        return
+    path.write_text(note)
+    print(path)
+    if not args.no_commit:
+        commit_note(path=path, message=f"todo: add {slug}")
+
+
 def read_todos():
     """Open todos in <vault_dir>/todo, or None when this machine keeps none. Open means `done: false`
     in the frontmatter, wherever the file sits."""
@@ -819,6 +894,11 @@ def main():
     n.add_argument("name"); n.set_defaults(fn=cmd_snapshot)
     sub.add_parser("kick").set_defaults(fn=cmd_kick)
     sub.add_parser("list").set_defaults(fn=cmd_list)
+    td = sub.add_parser("todo", help="write a todo note to <vault_dir>/todo")
+    td.add_argument("title", nargs="?"); td.add_argument("--area"); td.add_argument("--issue", "--jira"); td.add_argument("--due")
+    td.add_argument("--slug"); td.add_argument("--body-file"); td.add_argument("--body", choices=["-"], help="read the body from stdin")
+    td.add_argument("--dry-run", action="store_true"); td.add_argument("--no-commit", action="store_true")
+    td.add_argument("--list-areas", action="store_true"); td.set_defaults(fn=cmd_todo)
     rp = sub.add_parser("report", help="open todos, every project's next step, and your tracker issues in no project")
     rp.add_argument("--offline", action="store_true", help="skip the tracker and the vault pull")
     rp.set_defaults(fn=cmd_report)

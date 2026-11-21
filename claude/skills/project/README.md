@@ -25,6 +25,7 @@ You talk to Claude as usual:
 | "status on garden" | Claude reads the note and leads with the next step, blockers and anything new from the tracker. |
 | "update garden: the planting calendar merged" | Claude revises `## Current state`, sets `next:`, and adds a dated line to `## Log`. |
 | "what projects do I have?" | One line per project, with its status and next step. |
+| "add a todo to renew the domain by the 30th" | Claude writes a todo note to the vault's `todo/` folder, with an area and a due date. You tick it off yourself. |
 | "what's on my plate?" | Claude runs `project report`: open todos with deadlines first, each project's next step, and tracker issues assigned to you that no project claims. |
 | "audit garden" | Claude compares the note with the repo's open and merged PRs and releases, and points out where the note is out of date. |
 | "sync garden" | Claude shows a dry-run plan: what it would change in the tracker and what changed there. Nothing is written until you say yes. |
@@ -72,6 +73,12 @@ last_synced: 2026-11-20T17:52:10-05:00
 - **Frontmatter and the table** belong to the tool. The table markers say `jira:stories` for every tracker; the name is historical.
 - **The prose sections** are yours and Claude's to edit. `Current state` says what is true now, with no history. History goes in `Log`.
 - **`status` and `synced`** are how sync works. `synced` is the tracker's status as of the last sync. To move an issue, change its `status` cell and leave `synced` alone.
+
+## Todos
+
+Not everything belongs to a project. A todo is one small note in the vault's `todo/` folder for something you need to do later: a renewal, a follow-up, a step that only you can take. Claude writes them with `project todo`, and never marks one done; you do that by setting `done: true`, or by ticking the box in Obsidian.
+
+Each todo can have an area, a due date and a link to an issue. If you use Obsidian, a `Todos.base` file in the vault shows them as tables, with one view per area, and those views define the list of areas Claude picks from. Without Obsidian the notes still work, and `project report` lists the open ones with deadlines first.
 
 ## How sync works
 
@@ -152,9 +159,9 @@ If you use this whole dotfiles repo, `claude/install.sh` does steps 1 and 2.
 
    | Key | Meaning |
    |---|---|
-   | `vault_dir` | The notes vault. The `todo` skill keeps todos in its `todo/` folder, and `project report` reads them. |
+   | `vault_dir` | The notes vault. `project todo` keeps todos in its `todo/` folder, and `project report` reads them. |
 | `notes_dir` | Where the project notes live (default `<vault_dir>/projects`). Put it in a git repo if you want history. |
-| `issue_url`, `issue_field` | How `todo` turns `--issue KEY` into a link, and which frontmatter field holds it. |
+| `issue_url`, `issue_field` | How `project todo` turns `--issue KEY` into a link, and which frontmatter field holds it. |
    | `tracker` | `none`, `linear` or `jira`. The default; a note can override it. |
    | `github_org` | The owner assumed for a bare `repo#123` reference in a note. |
    | `done_statuses` | Statuses that count as closed. For Linear, use `["Done", "Canceled", "Duplicate"]`. |
@@ -180,6 +187,7 @@ Run `project profile` at any time to see the settings in effect.
 ```bash
 project profile                      # the settings in effect on this machine
 project list                         # one line per project
+project todo 'Title' [--area A] [--due DATE]   # write a todo note
 project report                       # todos, every project's next step, your unclaimed issues
 project status NAME                  # the note, with staleness warnings
 project audit NAME [--since DATE]    # read-only: the note against PRs and releases

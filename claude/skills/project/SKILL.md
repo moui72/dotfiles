@@ -1,6 +1,6 @@
 ---
 name: project
-description: Track the state of the user's ongoing projects as markdown notes (one per project), answer "status on <project>", and, when this machine's profile names an issue tracker, diff and sync the notes against it. Use when the user asks for the status of a project by name, wants to record progress on one, asks what projects they have, or wants to sync a project with the tracker. Also use for a status report, sitrep or "what's on my plate" across everything: open todos, every project and the user's tracker issues. To file a todo use todo.
+description: Track the state of the user's ongoing projects as markdown notes (one per project), answer "status on <project>", and, when this machine's profile names an issue tracker, diff and sync the notes against it. Use when the user asks for the status of a project by name, wants to record progress on one, asks what projects they have, or wants to sync a project with the tracker. Also use for a status report, sitrep or "what's on my plate" across everything: open todos, every project and the user's tracker issues. Also use whenever the user asks to write, add, capture or file a todo, to-do, follow-up or reminder for later, or when finished work leaves something the user should do later.
 allowed-tools: [Bash, Read, Edit, Write]
 ---
 
@@ -11,9 +11,9 @@ One note per project at `<notes_dir>/<slug>.md`. **The note is the source of tru
 ## Profile
 
 Each machine has its own profile at `~/.config/project-skill/profile.json` (or `$PROJECT_SKILL_PROFILE`). The profile is never kept in this repo. It sets:
-- `vault_dir`: the notes vault, which also holds `todo/` for the `todo` skill and `project report`
+- `vault_dir`: the notes vault, which also holds `todo/` and `Todos.base` for `project todo` and `project report`
 - `notes_dir`: default `<vault_dir>/projects`
-- `issue_url` and `issue_field`: how `todo` links a tracker key
+- `issue_url` and `issue_field`: how `project todo` links a tracker key
 - `tracker`: `none`, `jira` or `linear`. This is the default for every note.
 - `github_org`: the owner for bare `repo#123` references
 - `done_statuses` and `in_flight_statuses`
@@ -38,7 +38,7 @@ The Linear backend reads a personal API key from `$LINEAR_API_KEY`, then the pro
 ## Status report ("what's on my plate")
 
 `project report` is read-only and prints three sections:
-- **Open todos** from `<vault_dir>/todo` (written by the `todo` skill), grouped by area, with due dates flagged. Open means `done: false` in the frontmatter, wherever the file sits.
+- **Open todos** from `<vault_dir>/todo` (written by `project todo`), grouped by area, with due dates flagged. Open means `done: false` in the frontmatter, wherever the file sits.
 - **Projects**: each note's `next:`, plus a flag when its sync or code audit is stale.
 - **Tracker issues assigned to the user that no note claims**, for each tracker in use.
 
@@ -51,12 +51,35 @@ Turn it into a short report:
 
 `--offline` skips the tracker and the vault pull. Without it, the vault is pulled first when it has an upstream and no uncommitted edits.
 
+## Todos
+
+A todo is something for the user to do later, tied to a project or not. Each is a note in `<vault_dir>/todo/`, and Obsidian's `Todos.base` shows them as views. The script owns the format: never hand-write a todo file or edit its frontmatter.
+
+```bash
+project todo "Re-scope ABC-123 after the API change" \
+  [--area AREA] [--issue ABC-123] [--due 2026-09-30] [--body-file FILE | --body -]
+```
+
+- **Title**: short and imperative. It becomes `title:`, the H1 and the file name (lowercase ASCII, hyphens, at most 60 characters; `--slug` overrides).
+- **`--area`**: a closed vocabulary, one per view in `Todos.base`. `project todo --list-areas` prints it. Pick the closest one or leave it out. If the script warns that an area is new, tell the user it shows only in the Active view until they add a view.
+- **`--issue`**: a tracker key or a URL. A bare key (or a Jira browse URL) becomes the profile's `issue_url`; any other URL is kept. Include it whenever the work maps to an issue.
+- **`--due`**: only when the user gives or clearly implies a date. Convert relative dates to absolute ones.
+- **Body**: markdown through `--body -` (stdin) or `--body-file`. Say why it matters, link the source (`[[note]]` for vault notes, URLs for issues and PRs), and add `- [ ]` steps when there is more than one. Don't start with an H1.
+- The new file is committed on its own, and pushed when the vault has an upstream. `--no-commit` skips that. `--dry-run` prints the note and writes nothing.
+- The script never overwrites a todo, including one in `todo/completed/`. If it refuses, pass a more specific `--slug`; don't delete the existing file.
+
+Rules:
+- **Never mark a todo done** or set `done: true`. That is the user's click in Obsidian.
+- Don't restructure existing todos. Appending to an open todo's body is fine when asked; leave its frontmatter alone.
+- Finish with the path (`todo/<slug>.md`) in one line. When a todo comes out of a longer task, also say what it captures.
+
 ## Commands
 
 ```bash
 P=~/.claude/skills/project/scripts/project   # also symlinkable as `project` on PATH
 $P profile
 $P list
+$P todo 'Title' [--area A] [--issue KEY] [--due DATE]   # write a todo note (see Todos)
 $P report [--offline]             # everything on the user's plate: todos, projects, unclaimed tracker issues
 $P status 'my proj'                # NAME matches title, slug, alias or epic key
 $P audit 'my proj' [--since YYYY-MM-DD]   # read-only: note vs PRs/releases in `repos:`

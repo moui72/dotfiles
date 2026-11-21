@@ -1,17 +1,17 @@
-"""Per-machine profile for the project and todo skills.
+"""Per-machine profile for the project skill.
 
 The profile is a JSON file that lives on the machine, never in the dotfiles repo:
   $PROJECT_SKILL_PROFILE, else ~/.config/project-skill/profile.json
 With no file, the defaults apply: tracker "none", vault ~/Documents, notes in <vault_dir>/projects.
 
 Keys (all optional):
-  vault_dir           the notes vault: holds todo/ and Todos.base (todo, `project report`)
+  vault_dir           the notes vault: holds todo/ and Todos.base (`project todo`, `project report`)
   notes_dir           where the project notes live (one <slug>.md per project); default <vault_dir>/projects
   tracker             "none" | "jira" | "linear" (a backend module under backends/). This is the
                       default; a note's own `tracker:` frontmatter overrides it for that project
   issue_url           browse-URL template for a tracker key, e.g. https://example.atlassian.net/browse/{key}
-                      (todo turns `--issue KEY` into this link)
-  issue_field         frontmatter field todo stores the issue link in (default "issue")
+                      (`project todo` turns `--issue KEY` into this link)
+  issue_field         frontmatter field `project todo` stores the issue link in (default "issue")
   github_org          default owner for bare `repo#123` references in notes
   done_statuses       statuses that count as closed (also hides stories from the hooks)
   in_flight_statuses  statuses that mean "being worked on" (audit flags these when no PR exists)
