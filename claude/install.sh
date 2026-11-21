@@ -128,7 +128,7 @@ echo "project skill CLI (per-machine profile: ~/.config/project-skill/profile.js
 run mkdir -p "${HOME}/.local/bin"
 link "${SCRIPT_DIR}/skills/project/scripts/project" "${HOME}/.local/bin/project"
 [ -e "${HOME}/.config/project-skill/profile.json" ] \
-  || c_yellow "  no profile yet: tracker 'none', notes in ~/Documents/projects (see skills/project/profile.example.json)"
+  || c_yellow "  no profile yet: tracker 'none', vault ~/Documents (todos in todo/, projects in projects/) (see skills/project/profile.example.json)"
 echo
 
 echo "oh-my-zsh custom dir:"

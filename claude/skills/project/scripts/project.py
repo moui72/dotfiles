@@ -526,7 +526,7 @@ def cmd_resolve(args):
 def cmd_profile(args):
     print(f"profile file: {PROFILE['path'] or f'(none at {skill_profile.profile_path()}; defaults apply)'}")
     print("(`tracker` is the default; a note's own `tracker:` frontmatter overrides it)")
-    for k in ("notes_dir", "tracker", "github_org", "done_statuses", "in_flight_statuses", "instructions", "kick"):
+    for k in ("vault_dir", "notes_dir", "tracker", "issue_url", "issue_field", "github_org", "done_statuses", "in_flight_statuses", "instructions", "kick"):
         print(f"{k}: {PROFILE[k]}")
 
 

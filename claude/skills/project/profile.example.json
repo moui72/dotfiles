@@ -1,11 +1,23 @@
 {
-  "notes_dir": "~/Documents/projects",
+  "vault_dir": "~/Documents",
+  "notes_dir": "",
+  "issue_url": "",
+  "issue_field": "issue",
   "tracker": "none",
   "github_org": "",
-  "done_statuses": ["Done"],
-  "in_flight_statuses": ["In Progress", "In Review"],
+  "done_statuses": [
+    "Done"
+  ],
+  "in_flight_statuses": [
+    "In Progress",
+    "In Review"
+  ],
   "instructions": "",
   "kick": "",
-  "jira": {"client_dir": "~/.claude/skills/atlassian/scripts"},
-  "linear": {"api_key_file": "~/.config/project-skill/linear-api-key"}
+  "jira": {
+    "client_dir": "~/.claude/skills/atlassian/scripts"
+  },
+  "linear": {
+    "api_key_file": "~/.config/project-skill/linear-api-key"
+  }
 }
