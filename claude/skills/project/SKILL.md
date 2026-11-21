@@ -1,6 +1,6 @@
 ---
 name: project
-description: Track the state of the user's ongoing projects as markdown notes (one per project), answer "status on <project>", and, when this machine's profile names an issue tracker, diff and sync the notes against it. Use when the user asks for the status of a project by name, wants to record progress on one, asks what projects they have, or wants to sync a project with the tracker. For open todos and a cross-project sitrep use status-report; to file a todo use todo.
+description: Track the state of the user's ongoing projects as markdown notes (one per project), answer "status on <project>", and, when this machine's profile names an issue tracker, diff and sync the notes against it. Use when the user asks for the status of a project by name, wants to record progress on one, asks what projects they have, or wants to sync a project with the tracker. Also use for a status report, sitrep or "what's on my plate" across everything: open todos, every project and the user's tracker issues. To file a todo use todo.
 allowed-tools: [Bash, Read, Edit, Write]
 ---
 
@@ -11,7 +11,7 @@ One note per project at `<notes_dir>/<slug>.md`. **The note is the source of tru
 ## Profile
 
 Each machine has its own profile at `~/.config/project-skill/profile.json` (or `$PROJECT_SKILL_PROFILE`). The profile is never kept in this repo. It sets:
-- `vault_dir`: the notes vault, which also holds `todo/` for the `todo` and `status-report` skills
+- `vault_dir`: the notes vault, which also holds `todo/` for the `todo` skill and `project report`
 - `notes_dir`: default `<vault_dir>/projects`
 - `issue_url` and `issue_field`: how `todo` links a tracker key
 - `tracker`: `none`, `jira` or `linear`. This is the default for every note.
@@ -35,12 +35,29 @@ A note with no link is **local-only**, even on a machine with a tracker. `sync` 
 
 The Linear backend reads a personal API key from `$LINEAR_API_KEY`, then the profile's `linear.api_key_cmd`, then `linear.api_key_file` (default `~/.config/project-skill/linear-api-key`). Local-only commands need no key. Linear has no workflow transitions, so a status cell can be set to any status of the issue's team.
 
+## Status report ("what's on my plate")
+
+`project report` is read-only and prints three sections:
+- **Open todos** from `<vault_dir>/todo` (written by the `todo` skill), grouped by area, with due dates flagged. Open means `done: false` in the frontmatter, wherever the file sits.
+- **Projects**: each note's `next:`, plus a flag when its sync or code audit is stale.
+- **Tracker issues assigned to the user that no note claims**, for each tracker in use.
+
+Turn it into a short report:
+- Lead with deadlines: anything overdue or due within a week.
+- Read the body of each open todo for timing pressure that isn't in `due` ("blocked until", a trial or billing date). Most todos have no `due`.
+- When a todo, a project note and an issue cover the same work, say it once.
+- If the tracker line says "not reachable" and this session has a connector for it, fetch the user's open issues with the connector and leave out the keys already in the project tables. With no connector, say so in one line.
+- Never mark a todo done and never write to the tracker from a report. Don't run `sync` here; suggest it for a stale project.
+
+`--offline` skips the tracker and the vault pull. Without it, the vault is pulled first when it has an upstream and no uncommitted edits.
+
 ## Commands
 
 ```bash
 P=~/.claude/skills/project/scripts/project   # also symlinkable as `project` on PATH
 $P profile
 $P list
+$P report [--offline]             # everything on the user's plate: todos, projects, unclaimed tracker issues
 $P status 'my proj'                # NAME matches title, slug, alias or epic key
 $P audit 'my proj' [--since YYYY-MM-DD]   # read-only: note vs PRs/releases in `repos:`
 $P audit 'my proj' --stamp         # record last_audited once the note is updated

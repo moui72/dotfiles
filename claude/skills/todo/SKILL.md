@@ -1,6 +1,6 @@
 ---
 name: todo
-description: Create a todo in the user's notes vault (<vault_dir>/todo/) in the exact frontmatter format the Todos.base views read. Use whenever the user asks to write, add, capture, create, or file a todo / to-do / follow-up / reminder-for-later, or when finished work leaves something the user should execute later. Not for reading or reporting on todos — that's status-report.
+description: Create a todo in the user's notes vault (<vault_dir>/todo/) in the exact frontmatter format the Todos.base views read. Use whenever the user asks to write, add, capture, create, or file a todo / to-do / follow-up / reminder-for-later, or when finished work leaves something the user should execute later. Not for reading or reporting on todos: that's `project report` in the project skill.
 allowed-tools: [Bash, Write]
 ---
 
@@ -33,7 +33,7 @@ Todos are markdown notes in `<vault_dir>/todo/`. Obsidian's `Todos.base` renders
   - Don't start the body with an H1; the script writes it and strips a duplicate one.
   - A good body covers why it matters, links to the source (`[[note]]` wikilinks for vault notes, URLs for issues and PRs), and `- [ ]` steps when there is more than one.
 - **`--push`**: commits **only the new file** and pushes, with one rebase-and-retry if the push is rejected. Use it by default. Other uncommitted vault edits are left alone.
-  - Don't use `status-report/scripts/vault-sync.sh push` for this: it runs `git add -A`, which would commit the user's unrelated edits.
+  - Never commit a todo with `git add -A`: it would sweep in the user's unrelated vault edits.
 - **`--dry-run`**: prints the note and its target path, and writes nothing. Use it when the user wants to see the todo first.
 
 The script refuses to overwrite an existing slug, including one in `todo/completed/`. It exits non-zero on a bad `--issue` or `--due`, or on a bare key when the profile has no `issue_url`. If it refuses a slug, choose a more specific `--slug`. Don't delete the existing file.

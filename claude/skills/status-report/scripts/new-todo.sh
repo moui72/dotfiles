@@ -1,1 +1,0 @@
-../../todo/scripts/new-todo.sh

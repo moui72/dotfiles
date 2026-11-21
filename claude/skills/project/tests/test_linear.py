@@ -176,7 +176,7 @@ def test_key_file_and_env(monkeypatch, tmp_path):
 def load_cli(monkeypatch, tmp_path, default):
     """project.py loaded against a temp profile whose default tracker is `default`; returns run(*argv)."""
     profile = tmp_path / "profile.json"
-    profile.write_text(json.dumps({"notes_dir": str(tmp_path / "notes"), "tracker": default,
+    profile.write_text(json.dumps({"notes_dir": str(tmp_path / "notes"), "vault_dir": str(tmp_path / "vault"), "tracker": default,
                                    "done_statuses": ["Done", "Canceled"]}))
     monkeypatch.setenv("PROJECT_SKILL_PROFILE", str(profile))
     monkeypatch.delenv("PROJECT_NOTES_DIR", raising=False)
@@ -189,6 +189,7 @@ def load_cli(monkeypatch, tmp_path, default):
         project.main()
 
     run.notes = tmp_path / "notes"
+    run.vault = tmp_path / "vault"
     return run
 
 

@@ -25,6 +25,7 @@ You talk to Claude as usual:
 | "status on garden" | Claude reads the note and leads with the next step, blockers and anything new from the tracker. |
 | "update garden: the planting calendar merged" | Claude revises `## Current state`, sets `next:`, and adds a dated line to `## Log`. |
 | "what projects do I have?" | One line per project, with its status and next step. |
+| "what's on my plate?" | Claude runs `project report`: open todos with deadlines first, each project's next step, and tracker issues assigned to you that no project claims. |
 | "audit garden" | Claude compares the note with the repo's open and merged PRs and releases, and points out where the note is out of date. |
 | "sync garden" | Claude shows a dry-run plan: what it would change in the tracker and what changed there. Nothing is written until you say yes. |
 
@@ -151,7 +152,7 @@ If you use this whole dotfiles repo, `claude/install.sh` does steps 1 and 2.
 
    | Key | Meaning |
    |---|---|
-   | `vault_dir` | The notes vault. The `todo` and `status-report` skills keep todos in its `todo/` folder. |
+   | `vault_dir` | The notes vault. The `todo` skill keeps todos in its `todo/` folder, and `project report` reads them. |
 | `notes_dir` | Where the project notes live (default `<vault_dir>/projects`). Put it in a git repo if you want history. |
 | `issue_url`, `issue_field` | How `todo` turns `--issue KEY` into a link, and which frontmatter field holds it. |
    | `tracker` | `none`, `linear` or `jira`. The default; a note can override it. |
@@ -179,6 +180,7 @@ Run `project profile` at any time to see the settings in effect.
 ```bash
 project profile                      # the settings in effect on this machine
 project list                         # one line per project
+project report                       # todos, every project's next step, your unclaimed issues
 project status NAME                  # the note, with staleness warnings
 project audit NAME [--since DATE]    # read-only: the note against PRs and releases
 project audit NAME --stamp           # record that the note was brought up to date

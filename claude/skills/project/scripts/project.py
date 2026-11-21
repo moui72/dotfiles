@@ -5,6 +5,9 @@ Commands:
   profile                    show this machine's profile (notes dir, tracker, config file)
   list                       one line per project note
   status NAME                note summary + staleness
+  report [--offline]         everything on your plate: open todos in <vault_dir>/todo, each project's
+                             next step and staleness, and tracker issues assigned to you that no
+                             note claims. Read-only. --offline skips the tracker and the vault pull.
   init NAME [--alias A ...] [--tracker T] [--epic K --owns QUERY | --team KEY [--project P]]
                              create a note (seeded from the tracker when linked to one; never overwrites).
                              Jira: --epic and --owns. Linear: --team, optionally --project;
@@ -35,10 +38,11 @@ a note's own `tracker:` frontmatter overrides the default for that project.
 """
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -557,6 +561,102 @@ def cmd_status(args):
     print(body)
 
 
+def stale_flags(meta):
+    """Why a note may be out of date: an old sync (linked notes) or an old or missing code audit (notes with repos)."""
+    limit, now, flags = int(meta.get("stale_days", 7)), datetime.now().astimezone(), []
+    if is_linked(meta=meta) and meta.get("last_synced"):
+        age = (now - datetime.fromisoformat(meta["last_synced"])).days
+        if age > limit:
+            flags.append(f"synced {age}d ago")
+    if meta.get("repos"):
+        la = meta.get("last_audited")
+        aud = (now - datetime.fromisoformat(la)).days if la else None
+        if aud is None or aud > limit:
+            flags.append("never audited" if aud is None else f"audited {aud}d ago")
+    return flags
+
+
+def read_todos():
+    """Open todos in <vault_dir>/todo, or None when this machine keeps none. Open means `done: false`
+    in the frontmatter, wherever the file sits."""
+    root = PROFILE["vault_dir"] / "todo"
+    if not root.is_dir():
+        return None
+    todos = []
+    for folder, _, files in os.walk(root, followlinks=True):
+        for name in sorted(files):
+            path = Path(folder) / name
+            m = re.match(r"---\n(.*?)\n---", path.read_text(errors="replace"), re.S) if name.endswith(".md") else None
+            if not m:
+                continue
+            meta = {k.strip(): v.strip() for k, _, v in (line.partition(":") for line in m.group(1).splitlines())}
+            if meta.get("done") != "false":
+                continue
+            title = meta.get("title", "")
+            if len(title) > 1 and title[0] == title[-1] == '"':
+                title = title[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+            try:
+                due = date.fromisoformat(meta.get("due", ""))
+            except ValueError:
+                due = None
+            todos.append({"title": title or path.stem, "area": meta.get("area") or "(no area)", "due": due,
+                          "issue": meta.get(PROFILE["issue_field"], ""), "path": path})
+    return sorted(todos, key=lambda t: (t["area"], t["due"] or date.max, t["title"].lower()))
+
+
+def vault_pull():
+    """Bring the vault up to date before reading it, when that is safe: a git repo with an upstream and no local edits."""
+    git = ["git", "-C", str(PROFILE["vault_dir"])]
+    run = lambda *a: subprocess.run([*git, *a], capture_output=True, text=True)  # noqa: E731
+    if run("rev-parse", "--abbrev-ref", "@{u}").returncode:
+        return
+    if run("status", "--porcelain").stdout.strip():
+        print("vault: has uncommitted edits, not pulled")
+    elif run("pull", "--rebase", "-q").returncode:
+        run("rebase", "--abort")
+        print("vault: PULL FAILED, reporting from local state")
+
+
+def cmd_report(args):
+    if not args.offline:
+        vault_pull()
+    todos, today = read_todos(), date.today()
+    if todos is None:
+        print(f"== todos: none kept on this machine (no {PROFILE['vault_dir'] / 'todo'})")
+    else:
+        print(f"== todos: {len(todos)} open")
+        area = None
+        for t in todos:
+            if t["area"] != area:
+                area = t["area"]
+                print(f"  {area}")
+            days = (t["due"] - today).days if t["due"] else None
+            when = ("" if days is None else f"** OVERDUE {-days}d ** " if days < 0 else "** due today ** " if days == 0
+                    else f"** due in {days}d ** " if days <= 7 else f"due {t['due']} ")
+            print(f"    - {when}{t['title']}" + (f" ({t['issue']})" if t["issue"] else "") + f"  [{t['path'].relative_to(PROFILE['vault_dir'])}]")
+    notes = [(p, parse_note(p)[0]) for p in all_notes()]
+    print(f"== projects: {len(notes)}")
+    for p, meta in notes:
+        flags = stale_flags(meta=meta)
+        print(f"    - {meta.get('title', p.stem)} [{meta.get('status', '?')}]" + ("" if is_linked(meta=meta) else " (local only)")
+              + f" next: {meta.get('next') or '-'}" + (f"  ** {', '.join(flags)} **" if flags else ""))
+    if args.offline:
+        return
+    names = {tracker_name(profile=PROFILE, meta=None)} | {tracker_name(profile=PROFILE, meta=m) for _, m in notes if is_linked(meta=m)}
+    claimed = {k for p, _ in notes for k in read_table(parse_note(p)[1])}
+    for name in sorted(names - {"none"}):
+        try:
+            tr = tracker(name=name)
+            mine = [i for i in tr.my_open() if i["key"] not in claimed]
+        except (SystemExit, Exception) as e:  # no credential, no network: the rest of the report still stands
+            print(f"== {name}: not reachable ({str(e).split('. ')[0]}). With a connector in this session, fetch the open "
+                  "issues assigned to the user and leave out the keys in the project tables.")
+            continue
+        print(f"== {tr.name}: {len(mine)} assigned to you, in no project")
+        for i in mine:
+            print(f"    - {i['key']} [{i['status']}] reporter {i['reporter']}: {i['summary']}")
+
+
 def cmd_init(args):
     tr = tracker(name=(args.tracker or PROFILE["tracker"]).lower())
     path = PROJECTS / f"{re.sub(r'[^a-z0-9]+', '-', args.name.lower()).strip('-')}.md"
@@ -719,6 +819,9 @@ def main():
     n.add_argument("name"); n.set_defaults(fn=cmd_snapshot)
     sub.add_parser("kick").set_defaults(fn=cmd_kick)
     sub.add_parser("list").set_defaults(fn=cmd_list)
+    rp = sub.add_parser("report", help="open todos, every project's next step, and your tracker issues in no project")
+    rp.add_argument("--offline", action="store_true", help="skip the tracker and the vault pull")
+    rp.set_defaults(fn=cmd_report)
     s = sub.add_parser("status"); s.add_argument("name"); s.set_defaults(fn=cmd_status)
     i = sub.add_parser("init"); i.add_argument("name"); i.add_argument("--epic")
     i.add_argument("--owns"); i.add_argument("--team"); i.add_argument("--project")

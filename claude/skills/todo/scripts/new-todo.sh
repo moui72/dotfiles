@@ -116,7 +116,8 @@ if [[ $push -eq 1 ]]; then
   git add -- "$rel" && git commit -q -m "todo: add $slug" -- "$rel" || die "commit failed; $rel is written but uncommitted"
   echo "new-todo: committed $rel"
   branch="$(git branch --show-current)"
-  if git push -q origin "$branch" 2>/dev/null; then echo "new-todo: pushed"
+  if ! git remote get-url origin >/dev/null 2>&1; then echo "new-todo: no remote configured, skipping push"
+  elif git push -q origin "$branch" 2>/dev/null; then echo "new-todo: pushed"
   elif git pull --rebase --autostash -q origin "$branch" && git push -q origin "$branch"; then echo "new-todo: pushed after rebase"
   else echo "new-todo: PUSH FAILED — commit is local; resolve in $VAULT" >&2
   fi
