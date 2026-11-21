@@ -2,6 +2,9 @@
 import sys
 
 
+LINK_KEY = None
+
+
 class Backend:
     name = "none"
     syncs = False

@@ -13,6 +13,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+LINK_KEY = "owns"
 FIELDS = "key,summary,status,assignee,reporter,created,updated"
 
 
@@ -130,7 +131,13 @@ class Backend:
         r = self.jira._session.post(f"{self.jira.url}/rest/api/3/issue", json={"fields": fields})
         if r.status_code != 201:
             raise RuntimeError(f"create failed {r.status_code}: {r.text}")
-        return r.json()["key"]
+        return {"key": r.json()["key"], "status": "To Do"}
+
+    def create_target(self, meta):
+        return f"{meta.get('jira_project', '')} Story under {meta.get('jira_epic', '')}"
+
+    def project_status(self, meta):
+        return self.get(key=meta["jira_epic"])["status"]
 
     def url(self, key):
         return f"{self.jira.url}/browse/{key}"

@@ -11,7 +11,7 @@ Blocks the stop (once per checkpoint) when all of these hold:
 The reason asks the agent to update the note and run the dry-run sync, or to say why the work isn't
 project work. The agent can then stop: `stop_hook_active` and a per-session record of the last
 checkpoint it was blocked for keep it from looping. A no-op in the unattended upkeep run
-(PROJECT_UPKEEP_HEADLESS=1), and when the machine's profile has no tracker (nothing to sync).
+(PROJECT_UPKEEP_HEADLESS=1), and for projects with no tracker link (nothing to sync).
 """
 import json
 import os
@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from project_context import KEY_RE, TRACKER, matches, projects  # noqa: E402
+from project_context import KEY_RE, matches, projects  # noqa: E402
 
 STATE = Path.home() / ".claude" / "state" / "project_stop"
 # A command in command position: start of a line or after ; & | ( && ||, optionally behind VAR=... prefixes.
@@ -67,7 +67,7 @@ def scan(transcript_path):
 
 def main():
     data = json.load(sys.stdin)
-    if data.get("stop_hook_active") or os.environ.get("PROJECT_UPKEEP_HEADLESS") or TRACKER == "none":
+    if data.get("stop_hook_active") or os.environ.get("PROJECT_UPKEEP_HEADLESS"):
         return
     path = data.get("transcript_path")
     if not path or not os.path.exists(path):
@@ -85,7 +85,7 @@ def main():
             cp_cmds.append(cmd)
     if not last_cp or last_cp[0] < last_sync:
         return
-    projs = projects()
+    projs = [p for p in projects() if p["linked"]]  # local-only notes have nothing to sync
     branch = subprocess.run(["git", "-C", data.get("cwd") or ".", "branch", "--show-current"],
                             capture_output=True, text=True, timeout=5).stdout.strip()
     # The commits/PRs and branch are the strong signal; fall back to the prompts only when they name nothing.

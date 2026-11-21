@@ -6,14 +6,15 @@ With no file, the defaults apply: tracker "none", notes in ~/Documents/projects.
 
 Keys (all optional):
   notes_dir           where the project notes live (one <slug>.md per project)
-  tracker             "none" | "jira" (a backend module under backends/)
+  tracker             "none" | "jira" | "linear" (a backend module under backends/). This is the
+                      default; a note's own `tracker:` frontmatter overrides it for that project
   github_org          default owner for bare `repo#123` references in notes
   done_statuses       statuses that count as closed (also hides stories from the hooks)
   in_flight_statuses  statuses that mean "being worked on" (audit flags these when no PR exists)
   instructions        path to a markdown file of machine-specific conventions; the SessionStart
                       hook tells the agent to read it
   kick                shell command `project kick` runs (e.g. refresh a token, restart a job)
-  jira                backend settings, see backends/jira.py
+  jira, linear        backend settings, see backends/jira.py and backends/linear.py
 
 Env overrides: PROJECT_NOTES_DIR (notes_dir), PROJECT_TRACKER (tracker).
 """

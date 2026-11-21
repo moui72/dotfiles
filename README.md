@@ -21,7 +21,8 @@ dotfiles/
     ├── settings.json          # generic, machine-agnostic Claude Code user settings
     ├── install.sh             # symlinks settings.json + skills into ~/.claude
     └── skills/
-        └── assisted-review/   # interactive hunk-by-hunk PR review (you are the reviewer)
+        ├── assisted-review/   # interactive hunk-by-hunk PR review (you are the reviewer)
+        └── project/           # one status note per project, kept in step with Linear or Jira
 ```
 
 ## Install on a new machine

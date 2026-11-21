@@ -5,8 +5,11 @@ Commands:
   profile                    show this machine's profile (notes dir, tracker, config file)
   list                       one line per project note
   status NAME                note summary + staleness
-  init NAME [--epic K --owns QUERY] [--alias A ...]
-                             create a note (seeded from the tracker when there is one; never overwrites)
+  init NAME [--alias A ...] [--tracker T] [--epic K --owns QUERY | --team KEY [--project P]]
+                             create a note (seeded from the tracker when linked to one; never overwrites).
+                             Jira: --epic and --owns. Linear: --team, optionally --project;
+                             with neither, the note is local-only. --tracker overrides the
+                             profile's default tracker for this note and is recorded in it.
   sync [NAME]                dry-run plan: outbound, planned creates, comments to
                              post, inbound, conflicts
   sync NAME --apply [--only K1,K2] [--no-commit]
@@ -19,11 +22,16 @@ Commands:
   resolve NAME KEY --keep tracker|local
                              settle a sync conflict
   kick                       run the profile's `kick` command
+  snapshot NAME              connector mode: print what to fetch with the tracker's connector
+  sync NAME --snapshot FILE [--apply --results FILE | --pull]
+                             connector mode: read the tracker from a snapshot the agent fetched, and
+                             record the writes the agent made (see backends/snapshot.py)
 
 Note sections the script reads: the managed story table, `## Planned`
 (`- [ ] summary` = a story to create) and `## Comments to post`
 (`- KEY: text`). Each tracker write is persisted to the note before the next one.
-The tracker and notes dir come from the machine's profile (skill_profile.py).
+The notes dir and the default tracker come from the machine's profile (skill_profile.py);
+a note's own `tracker:` frontmatter overrides the default for that project.
 """
 import argparse
 import json
@@ -35,7 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import skill_profile  # noqa: E402
-from backends import load_backend  # noqa: E402
+from backends import linked, load_backend, tracker_name  # noqa: E402
 
 PROFILE = skill_profile.load()
 PROJECTS = PROFILE["notes_dir"]
@@ -49,8 +57,27 @@ def now_iso():
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
-def tracker():
-    return load_backend(profile=PROFILE)
+_BACKENDS = {}
+CONNECTOR = {"snapshot": None, "results": None}  # set from --snapshot/--results: read the tracker from a file
+
+
+def tracker(meta=None, name=None):
+    """The backend for a note (its own `tracker:` or the profile's default), one instance per tracker.
+    In connector mode it is the snapshot backend standing in for that tracker."""
+    name = name or tracker_name(profile=PROFILE, meta=meta)
+    via = (name, CONNECTOR["snapshot"], CONNECTOR["results"]) if name != "none" else (name, None, None)
+    if via not in _BACKENDS:
+        if via[1]:
+            from backends import snapshot
+            _BACKENDS[via] = snapshot.Backend(profile=PROFILE, real=name, snapshot=via[1], results=via[2])
+        else:
+            _BACKENDS[via] = load_backend(profile=PROFILE, name=name)
+    return _BACKENDS[via]
+
+
+def is_linked(meta):
+    """A note with no link to its tracker is local-only, even when this machine has a tracker."""
+    return linked(profile=PROFILE, meta=meta)
 
 
 # ---------- note format (the script owns it) ----------
@@ -157,12 +184,15 @@ def make_plan(tr, me, path):
     since = datetime.fromisoformat(meta["last_synced"])
     table = read_table(body)
     live = tr.owned(meta=meta)
+    partial = getattr(tr, "partial", False)
     epic = meta.get("jira_epic")
     plan = {"meta": meta, "live": live, "transitions": [], "creates": [], "comments": [],
             "pull_status": [], "new_stories": [], "questions": [], "fyi": [], "conflicts": [], "blocked": []}
 
     for key, row in table.items():
         j = live.get(key)
+        if not j and partial:  # not in a partial snapshot: the tracker's side is unchanged since the last sync
+            j = {"status": row["synced"], "assignee": row.get("assignee")}
         if not j:
             plan["fyi"].append(f"{key}: no longer matched by `owns` (moved or deleted in {tr.name})")
             continue
@@ -193,14 +223,14 @@ def make_plan(tr, me, path):
         for day, who, text in tr.comments_since(key=key, since=since, me=me):
             plan["questions"].append({"key": key, "day": day, "who": who, "text": text})
 
-    existing = {i["summary"].strip().lower() for i in live.values()}
+    existing = {i["summary"].strip().lower() for i in live.values()} | {r["summary"].strip().lower() for r in table.values()}
     for s in read_planned(body):
         if s.lower() in existing:
             plan["blocked"].append(f"planned {s!r}: a story with this exact summary already exists under the epic")
         else:
             plan["creates"].append(s)
     for key, text in read_comments_to_post(body):
-        if key in live:
+        if key in live or (partial and key in table):
             plan["comments"].append({"key": key, "text": text})
         else:
             plan["blocked"].append(f"comment on {key}: not under this project's `owns`")
@@ -212,7 +242,7 @@ def print_plan(plan, tr):
     print(f"== {meta['title']}  (tracked {len(read_table(parse_note(Path(plan['path']))[1]))}, live {len(plan['live'])}, since {meta['last_synced'][:16]})")
     sections = [
         ("outbound transitions", [f"{t['key']}: {t['frm']} -> {t['to']} via {t['via']!r}" for t in plan["transitions"]]),
-        ("planned creates", [f"CREATE {meta.get('jira_project', '')} Story under {meta.get('jira_epic', '')}: {s}" for s in plan["creates"]]),
+        ("planned creates", [f"CREATE {tr.create_target(meta=meta)}: {s}" for s in plan["creates"]]),
         ("comments to post", [f"{c['key']}: {c['text']}" for c in plan["comments"]]),
         ("inbound", [f"{p['key']}: {tr.name} moved {p['frm']} -> {p['status']}" for p in plan["pull_status"]]
          + [f"{n['key']}: new under `owns` ({n['status']}, reporter {n['reporter']}): {n['summary']}" for n in plan["new_stories"]]
@@ -260,8 +290,9 @@ def apply_plan(tr, path, plan, only, commit, pull_only=False, push=True):
         return done
 
     for s in ([] if pull_only else plan["creates"]):
-        key = tr.create(meta=meta, summary=s)
-        save(set_row(drop_line(text=text(), name="Planned", line=f"- [ ] {s}"), key, status="To Do", synced="To Do",
+        made = tr.create(meta=meta, summary=s)
+        key = made["key"]
+        save(set_row(drop_line(text=text(), name="Planned", line=f"- [ ] {s}"), key, status=made["status"], synced=made["status"],
                      summary=s.replace("|", "/"), assignee=my_name))
         save(add_line(text=text(), name="Log", line=f"- {now_iso()[:10]}: created {key}: {s}"))
         done.append(f"created {key}: {s}")
@@ -284,7 +315,8 @@ def apply_plan(tr, path, plan, only, commit, pull_only=False, push=True):
     if pull_only and not done and not plan["fyi"]:
         print(f"pulled (no {tr.name} writes):\n  - nothing to pull; note unchanged")
         return done
-    save(set_meta(text=t, key="last_synced", value=now_iso()))
+    # A snapshot is older than now: advance only to when it was taken, so nothing in between is skipped.
+    save(set_meta(text=t, key="last_synced", value=getattr(tr, "as_of", None) or now_iso()))
 
     if commit and done:
         commit_note(path=path, message=f"project: sync {meta['title']} ({len(done)} changes)", push=push)
@@ -305,7 +337,7 @@ def commit_note(path, message, push=True):
     if r.returncode:
         print("commit failed:", r.stderr.strip())
         return
-    if not push:
+    if not push or run("rev-parse", "--abbrev-ref", "@{u}").returncode:  # no upstream: a local-only notes repo
         return
     if run("push").returncode:
         run("pull", "--rebase")
@@ -329,8 +361,8 @@ def pr_keys(pr, prefix):
 
 
 def key_prefix(meta, table):
-    if meta.get("jira_project"):
-        return meta["jira_project"]
+    if meta.get("jira_project") or meta.get("linear_team"):
+        return meta.get("jira_project") or meta["linear_team"]
     prefixes = {k.split("-")[0] for k in table}
     return prefixes.pop() if len(prefixes) == 1 else None
 
@@ -349,9 +381,9 @@ def cmd_audit(args):
     since = args.since or (meta.get("last_audited") or meta["last_synced"])[:10]
     table = read_table(body)
     prefix = key_prefix(meta=meta, table=table)
-    tr = tracker()
-    if tr.syncs:
-        live = tr.owned(meta=meta)
+    synced = is_linked(meta=meta) and not args.local
+    if synced:
+        live = tracker(meta=meta).owned(meta=meta)
         summary_of = lambda k: live[k]["summary"]  # noqa: E731
         status_of = lambda k: table[k]["status"] if k in table else live[k]["status"]  # noqa: E731
     else:
@@ -430,7 +462,7 @@ def cmd_audit(args):
                 print(f"  {repo}#{num} is still OPEN, but the note says merged/done: ...{win.strip()}...")
     print(f"  ({len(seen)} PR references checked)")
     print("\nNext: update the note's current state, set story statuses in the table, "
-          + ("run `sync` for the tracker plan, " if tr.syncs else "")
+          + ("run `sync` for the tracker plan, " if synced else "")
           + "then `audit --stamp`.")
 
 
@@ -460,7 +492,7 @@ def cmd_accept(args):
     t = add_line(text=t, name="Log", line=f"- {now_iso()[:10]}: accepted proposal {args.key} -> {target}")
     path.write_text(t)
     print(f"{args.key} status cell -> {target!r}." + (f" Run `project sync {path.stem}` to see the tracker plan, then --apply."
-                                                      if PROFILE["tracker"] != "none" else ""))
+                                                      if is_linked(meta=parse_note(path)[0]) else ""))
 
 
 def cmd_reject(args):
@@ -476,7 +508,10 @@ def cmd_resolve(args):
     path = resolve(args.name)
     t = path.read_text()
     row = read_table(t).get(args.key) or sys.exit(f"{args.key} isn't in the story table")
-    tr = tracker()
+    meta = parse_note(path)[0]
+    if not is_linked(meta=meta):
+        sys.exit(f"{path.stem} is local-only: there is no tracker status to resolve against")
+    tr = tracker(meta=meta)
     js = tr.get(key=args.key)["status"]
     if args.keep in ("tracker", "jira"):
         t = set_row(t, args.key, status=js, synced=js)
@@ -490,6 +525,7 @@ def cmd_resolve(args):
 
 def cmd_profile(args):
     print(f"profile file: {PROFILE['path'] or f'(none at {skill_profile.profile_path()}; defaults apply)'}")
+    print("(`tracker` is the default; a note's own `tracker:` frontmatter overrides it)")
     for k in ("notes_dir", "tracker", "github_org", "done_statuses", "in_flight_statuses", "instructions", "kick"):
         print(f"{k}: {PROFILE[k]}")
 
@@ -517,28 +553,31 @@ def cmd_status(args):
             print(f"** code audit {'never run' if aud is None else f'{aud}d old'}: run `audit {meta['title']}` **")
     print(p)
     print(f"status: {meta.get('status')} | next: {meta.get('next')} | last synced {age}d ago"
-          + ("  ** STALE **" if PROFILE["tracker"] != "none" and age > int(meta.get("stale_days", 7)) else ""))
+          + ("  ** STALE **" if is_linked(meta=meta) and age > int(meta.get("stale_days", 7)) else ""))
     print(body)
 
 
 def cmd_init(args):
-    tr = tracker()
+    tr = tracker(name=(args.tracker or PROFILE["tracker"]).lower())
     path = PROJECTS / f"{re.sub(r'[^a-z0-9]+', '-', args.name.lower()).strip('-')}.md"
     if path.exists():
         sys.exit(f"{path} exists; not overwriting")
     extra = tr.init_meta(args=args)
     aliases = ", ".join(([args.epic] if args.epic else []) + (args.alias or []))
     rows, status = {}, "active"
-    if tr.syncs:
+    seeded = tr.syncs and bool(extra)
+    if seeded:
         meta = dict(line.split(": ", 1) for line in extra)
-        status = tr.get(key=meta["jira_epic"])["status"]
+        status = tr.project_status(meta=meta)
         rows = {i["key"]: {"status": i["status"], "synced": i["status"], "summary": i["summary"].replace("|", "/"),
                            "assignee": i["assignee"]} for i in tr.open_owned(meta=meta)}
     now = now_iso()
     path.parent.mkdir(parents=True, exist_ok=True)
-    head = [f"title: {args.name}", f"aliases: [{aliases}]", f"status: {status}", *extra,
+    pin = [f"tracker: {args.tracker.lower()}"] if args.tracker else []  # an explicit choice is recorded in the note
+    head = [f"title: {args.name}", f"aliases: [{aliases}]", f"status: {status}", *pin, *extra,
             "next: ", "stale_days: 7", f"last_synced: {now}"]
-    origin = f"from {tr.name} ({len(rows)} open stories)" if tr.syncs else "(no tracker)"
+    origin = f"from {tr.name} ({len(rows)} open stories)" if seeded else \
+        f"(local only, not linked to {tr.name})" if tr.syncs else "(no tracker)"
     path.write_text(
         "---\n" + "\n".join(head) + f"\n---\n# {args.name}\n\n"
         f"## Current state\n\n## Questions for me\n\n## Open stories\n{BEGIN}\n{render_table(rows)}\n{END}\n\n"
@@ -576,11 +615,46 @@ class SyncLock:
         self.fh.close()
 
 
+def link_meta(meta):
+    return {k: v for k, v in meta.items() if k == "owns" or k.startswith(("linear_", "jira_"))}
+
+
+def connector_writes(plan):
+    """The tracker writes a plan wants, for the agent to make with the connector."""
+    where = link_meta(meta=plan["meta"])
+    return ([{"op": "transition", "key": t["key"], "to": t["to"]} for t in plan["transitions"]]
+            + [{"op": "comment", "key": c["key"], "text": c["text"]} for c in plan["comments"]]
+            + [{"op": "create", "summary": s, "assignee": "me", "where": where} for s in plan["creates"]])
+
+
+def cmd_snapshot(args):
+    """Connector mode, step 1: say exactly what the agent should fetch for this note."""
+    path = resolve(args.name)
+    meta, _ = parse_note(path)
+    if not is_linked(meta=meta):
+        sys.exit(f"{path.stem} is local-only: nothing to fetch")
+    out = Path("~/.cache/project-skill").expanduser() / f"{path.stem}.snapshot.json"  # scratch, kept out of the notes repo
+    print(json.dumps({
+        "project": meta["title"], "tracker": tracker_name(profile=PROFILE, meta=meta), "scope": link_meta(meta=meta),
+        "updated_after": meta["last_synced"],
+        "fetch": ["your own name in the tracker -> `me`",
+                  "the status names of the team or project -> `statuses`",
+                  "every issue in `scope` updated after `updated_after`, all pages: key, title, status, assignee, "
+                  "creator, updatedAt, url -> `issues`",
+                  "for each of those issues, its comments: createdAt, author, body -> that issue's `comments`"],
+        "write_snapshot_to": str(out), "write_results_to": str(out.with_name(f"{path.stem}.results.json")),
+        "then": f"project sync {path.stem} --snapshot {out}",
+        "format": "see scripts/backends/snapshot.py",
+    }, indent=1))
+
+
 def cmd_sync(args):
     if args.apply and not args.name:
         sys.exit("--apply needs a project NAME (--pull may run across all projects)")
-    if PROFILE["tracker"] == "none":
-        sys.exit("tracker is 'none' in this machine's profile: the notes are the only record, nothing to sync")
+    if args.snapshot and not args.name:
+        sys.exit("connector mode syncs one project at a time: name a project")
+    if args.results and not (args.snapshot and args.apply):
+        sys.exit("--results goes with --apply --snapshot")
     if args.json:  # the human-readable report goes to stderr; stdout carries only the JSON
         import contextlib
         with contextlib.redirect_stdout(sys.stderr):
@@ -591,17 +665,31 @@ def cmd_sync(args):
 
 
 def run_sync(args):
-    tr = tracker()
-    me = tr.me()
-    paths = [resolve(args.name)] if args.name else all_notes()
+    paths = [resolve(args.name)] if args.name else [p for p in all_notes() if is_linked(meta=parse_note(p)[0])]
+    if args.name and not is_linked(meta=parse_note(paths[0])[0]):
+        sys.exit(f"{paths[0].stem} is local-only: its frontmatter has no tracker link, so there is nothing to sync")
+    used = {}  # tracker name -> backend, for every tracker these notes use
+    default = None if args.snapshot else tracker()
+    if default and default.syncs:
+        used[default.name] = default
+    if not paths and not used:
+        sys.exit("no project is linked to a tracker: the notes are the only record, nothing to sync")
     claimed, out = set(), {"generated": now_iso(), "mode": "pull" if args.pull else "apply" if args.apply else "dry-run",
                            "projects": [], "unclaimed": None}
     for p in paths:
+        tr = tracker(meta=parse_note(p)[0])
+        used[tr.name] = tr
+        me = tr.me()
         plan = make_plan(tr=tr, me=me, path=p)
         plan["path"] = str(p)
         print_plan(plan=plan, tr=tr)
         claimed |= set(plan["live"]) | set(read_table(parse_note(p)[1]))
         done = []
+        writes = connector_writes(plan=plan) if args.snapshot else []
+        if writes and not (args.apply or args.pull):
+            print("  connector mode: after the user's yes, make these writes with the tracker's connector, record each\n"
+                  "  outcome in a results file, then run `sync NAME --apply --snapshot FILE --results RESULTS`:")
+            print(json.dumps(writes, indent=1))
         if args.apply or args.pull:
             if plan["conflicts"]:
                 print("  (conflicting keys are left untouched; resolve them in the note)")
@@ -614,7 +702,7 @@ def run_sync(args):
     if not args.name:
         for p in all_notes():
             claimed |= set(read_table(parse_note(p)[1]))
-        unclaimed = [i for i in tr.my_open() if i["key"] not in claimed]
+        unclaimed = [i for tr in used.values() for i in tr.my_open() if i["key"] not in claimed]
         print(f"== unclaimed (assigned to you, in no project): {len(unclaimed)}")
         for i in unclaimed:
             print(f"    - {i['key']} [{i['status']}] reporter {i['reporter']}: {i['summary']}")
@@ -627,25 +715,35 @@ def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("profile").set_defaults(fn=cmd_profile)
+    n = sub.add_parser("snapshot", help="connector mode: print what to fetch for a project")
+    n.add_argument("name"); n.set_defaults(fn=cmd_snapshot)
     sub.add_parser("kick").set_defaults(fn=cmd_kick)
     sub.add_parser("list").set_defaults(fn=cmd_list)
     s = sub.add_parser("status"); s.add_argument("name"); s.set_defaults(fn=cmd_status)
     i = sub.add_parser("init"); i.add_argument("name"); i.add_argument("--epic")
-    i.add_argument("--owns"); i.add_argument("--alias", action="append"); i.set_defaults(fn=cmd_init)
+    i.add_argument("--owns"); i.add_argument("--team"); i.add_argument("--project")
+    i.add_argument("--tracker", help="override the profile's default tracker for this note (none, jira, linear)")
+    i.add_argument("--alias", action="append"); i.set_defaults(fn=cmd_init)
     y = sub.add_parser("sync"); y.add_argument("name", nargs="?")
     y.add_argument("--apply", action="store_true"); y.add_argument("--pull", action="store_true"); y.add_argument("--only"); y.add_argument("--no-commit", action="store_true")
     y.add_argument("--no-push", action="store_true", help="commit the note locally but don't push (unattended runs)")
     y.add_argument("--json", action="store_true", help="print the plan and what was applied as JSON on stdout")
+    y.add_argument("--snapshot", help="connector mode: read the tracker from this file instead of its API")
+    y.add_argument("--results", help="connector mode: outcomes of the writes the agent made, for --apply")
     y.set_defaults(fn=cmd_sync)
     u = sub.add_parser("audit"); u.add_argument("name"); u.add_argument("--since"); u.add_argument("--stamp", action="store_true")
+    u.add_argument("--local", action="store_true", help="use the note's table and don't ask the tracker")
     u.set_defaults(fn=cmd_audit)
     for verb, fn in (("accept", cmd_accept), ("reject", cmd_reject)):
         a = sub.add_parser(verb, help=f"{verb} a line under ## Proposed status changes")
         a.add_argument("name"); a.add_argument("key"); a.set_defaults(fn=fn)
     r = sub.add_parser("resolve", help="resolve a sync conflict on one story")
     r.add_argument("name"); r.add_argument("key"); r.add_argument("--keep", choices=["tracker", "jira", "local"], required=True)
+    r.add_argument("--snapshot", help="connector mode: read the tracker's status from this file")
     r.set_defaults(fn=cmd_resolve)
+    i.add_argument("--snapshot", help="connector mode: seed the table from this file (all open issues in scope)")
     args = ap.parse_args()
+    CONNECTOR.update(snapshot=getattr(args, "snapshot", None), results=getattr(args, "results", None))
     args.fn(args)
 
 

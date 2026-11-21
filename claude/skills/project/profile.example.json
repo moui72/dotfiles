@@ -6,5 +6,6 @@
   "in_flight_statuses": ["In Progress", "In Review"],
   "instructions": "",
   "kick": "",
-  "jira": {"client_dir": "~/.claude/skills/atlassian/scripts"}
+  "jira": {"client_dir": "~/.claude/skills/atlassian/scripts"},
+  "linear": {"api_key_file": "~/.config/project-skill/linear-api-key"}
 }
